@@ -22,22 +22,6 @@ cmd.add_argument('-c', '--commit', required=False, help='commit id')
 cmd.add_argument('-p', '--port', required=False, help='ac port')
 arg = cmd.parse_args()
 
-SCHEMA = {
-	'WALL_REF': {
-		'Inside': [
-			{ 'value': 3, 'name': 'Finish Face: Interior' },
-			{ 'value': 5, 'name': 'Core Face: Interior' }
-		],
-		'Center': [
-			{ 'value': 0, 'name': 'Wall Centerline' },
-			{ 'value': 1, 'name': 'Core Centerline' }
-		],
-		'Outside': [
-			{ 'value': 2, 'name': 'Finish Face: Exterior' },
-			{ 'value': 4, 'name': 'Core Face: Exterior' }
-		],
-	}
-}
 
 class Archicad():
 
@@ -206,4 +190,4 @@ for s in selection:
 
 			i += 1
 
-spk.update(obj, 'walls 001b1')
+# spk.update(obj, 'walls 001c)
