@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import time
 
 from specklepy.api import operations
@@ -112,12 +113,12 @@ for s in selection:
 	if catName == 'Wall':
 		for i in range(0, len(obj['@Wall'])):
 			if guId.lower() == obj['@Wall'][i]['applicationId'].lower():
+
 				print(guId)
-			# 	# update schema
+				# wall = bos.traverse_base(obj['@Wall'][i])[1]
+				wall = obj['@Wall'][i]
 
-				wall = bos.traverse_base(obj['@Wall'][i])[1]
-				# print(wall)
-
+				# update schema
 				wall['category'] = 'Walls'
 				wall['family'] = 'Basic Wall'
 				wall['type'] = 'User Custom'
@@ -126,6 +127,7 @@ for s in selection:
 				wall['parameters']['speckle_type'] = 'Base'
 				wall['parameters']['applicationId'] = None
 
+				# insert location line parameter
 				wall['parameters']['WALL_KEY_REF_PARAM'] = {}
 				wall['parameters']['WALL_KEY_REF_PARAM'] = {
 					'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
@@ -141,6 +143,7 @@ for s in selection:
 					'value': 0
 				}
 
+				# get baseline geometry
 				t  = wall['thickness']
 				sx = wall['baseLine']['start']['x']
 				sy = wall['baseLine']['start']['y']
@@ -148,17 +151,67 @@ for s in selection:
 				ex = wall['baseLine']['end']['x']
 				ey = wall['baseLine']['end']['y']
 				ez = wall['baseLine']['end']['z']
-				mod = 0
+				mod = t/2
 
-				if obj['@Wall'][i]['referenceLineStartIndex'] == -1:
-					mod = t/2
-				elif obj['@Wall'][i]['referenceLineStartIndex'] == -3:
-					mod = -t/2
+				if wall['referenceLineLocation'] == 'Inside' and wall['referenceLineStartIndex'] == -1:
+					mod = -mod
 
-				wall['baseLine']['start']['x'] = sx + mod
-				wall['baseLine']['end']['x'] = ex + mod
+				if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == 3:
+					mod = -mod
 
-				obj['@Wall'][i] = bos.recompose_base(wall)
+				print(wall['referenceLineLocation'])
+				print(wall['referenceLineStartIndex'])
+
+				if wall['referenceLineLocation'] == 'Center':
+					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 0
+
+				elif wall['referenceLineLocation'] == 'Outside':
+					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 2
+
+				elif wall['referenceLineLocation'] == 'Inside':
+					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 3
+
+				# try to get a vector
+				print('line: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
+
+				# vector deltas
+				dx = ex - sx
+				dy = ey - sy
+				print('delta: (' + str(dx) + ',' + str(dy) + ')')
+
+				vx = -dy
+				vy = dx
+
+				vw = math.sqrt((vx*1000) ** 2 + (vy*1000) ** 2)/1000
+				print('vector: (' + str(vx) + ',' + str(vy) + '), weight: ' + str(vw))
+
+				ux = vx/vw
+				uy = vy/vw
+				print('unitv: (' + str(ux) + ',' + str(uy) + ')')
+
+				line = bos.traverse_base(obj['@Wall'][i]['baseLine'])[1]
+				if not wall['referenceLineLocation'] == 'Center':
+					# wall['baseLine']['start']['x'] = sx + 1
+					# wall['baseLine']['end']['x'] = ex + 1
+					# wall['baseLine']['start']['y'] = sy
+					# wall['baseLine']['end']['y'] = ey
+
+					# line['start']['x'] = sx + (ux * mod)
+					# line['end']['x'] = ex + (ux * mod)
+					# line['start']['y'] = sy + (uy * mod)
+					# line['end']['y'] = ey + (uy * mod)
+
+					line['start']['x'] = sx + 1
+					line['end']['x'] = ex + 1
+					line['start']['y'] = sy + 1
+					line['end']['y'] = ey + 1
+
+				wall['baseLine'] = bos.recompose_base(line)
+
+				print('result: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
+
+				# repack back
+				# obj['@Wall'][i] = bos.recompose_base(wall)
 
 # comitting
-spk.update(obj, 'walls 001d')
+spk.update(obj, '001c1')
