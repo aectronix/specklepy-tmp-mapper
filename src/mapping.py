@@ -70,15 +70,18 @@ class Cloud():
 		self.transport = ServerTransport(client=self.client, stream_id=stream)
 		result = operations.receive(content.referencedObject, self.transport)
 
-		bos = BaseObjectSerializer()
-		obj = bos.traverse_base(result)
+		# bos = BaseObjectSerializer()
+		# obj = bos.traverse_base(result)
 
-		return obj
+		# return obj
+		return result
 
 	def update(self, obj, message):
 
 		print('preparing and committing ...')
-		base = BaseObjectSerializer().recompose_base(obj[1])
+		bos = BaseObjectSerializer()
+		# base = bos.recompose_base(obj)
+		base = obj
 		obj_upd = operations.send(base, [self.transport])
 
 		commit = self.client.commit.create(
@@ -94,12 +97,11 @@ class Cloud():
 # Establish connections
 arc = Archicad(arg.port)
 spk = Cloud()
+bos = BaseObjectSerializer()
 
 # Get contents
 obj = spk.retrieve(arg.stream, arg.commit)
 selection = arc.com.GetSelectedElements()
-
-# print(obj[1]['elements'][0]['elements'][0]['parameters'])
 
 for s in selection:
 	# get main info
@@ -108,22 +110,24 @@ for s in selection:
 	catName = catIds[0].typeOfElement.elementType
 
 	if catName == 'Wall':
-		i = 0
-		for wall in obj[1]['@Wall']:
-			appId = wall['applicationId']
-			if guId.lower() == appId.lower():
+		for i in range(0, len(obj['@Wall'])):
+			if guId.lower() == obj['@Wall'][i]['applicationId'].lower():
 				print(guId)
-				# update schema
-				obj[1]['@Wall'][i]['category'] = 'Walls'
-				obj[1]['@Wall'][i]['family'] = 'Basic Wall'
-				obj[1]['@Wall'][i]['type'] = 'Wall - Custom'
+			# 	# update schema
 
-				obj[1]['@Wall'][i]['parameters'] = {}
-				obj[1]['@Wall'][i]['parameters']['speckle_type'] = 'Base'
-				obj[1]['@Wall'][i]['parameters']['applicationId'] = None
+				wall = bos.traverse_base(obj['@Wall'][i])[1]
+				# print(wall)
 
-				obj[1]['@Wall'][i]['parameters']['WALL_KEY_REF_PARAM'] = {}
-				obj[1]['@Wall'][i]['parameters']['WALL_KEY_REF_PARAM'] = {
+				wall['category'] = 'Walls'
+				wall['family'] = 'Basic Wall'
+				wall['type'] = 'User Custom'
+
+				wall['parameters'] = {}
+				wall['parameters']['speckle_type'] = 'Base'
+				wall['parameters']['applicationId'] = None
+
+				wall['parameters']['WALL_KEY_REF_PARAM'] = {}
+				wall['parameters']['WALL_KEY_REF_PARAM'] = {
 					'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
 					'applicationId': None,
 					'applicationInternalName': 'WALL_KEY_REF_PARAM',
@@ -134,60 +138,27 @@ for s in selection:
 					'isTypeParameter': False,
 					'name': 'Location Line',
 					'units': None,
+					'value': 0
 				}
 
-				# retrieve baseline geometry
-				t = obj[1]['@Wall'][i]['thickness']
-				sx = obj[1]['@Wall'][i]['baseLine']['start']['x']
-				sy = obj[1]['@Wall'][i]['baseLine']['start']['y']
-				sz = obj[1]['@Wall'][i]['baseLine']['start']['z']
-				ex = obj[1]['@Wall'][i]['baseLine']['end']['x']
-				ey = obj[1]['@Wall'][i]['baseLine']['end']['y']
-				ez = obj[1]['@Wall'][i]['baseLine']['end']['z']
+				t  = wall['thickness']
+				sx = wall['baseLine']['start']['x']
+				sy = wall['baseLine']['start']['y']
+				sz = wall['baseLine']['start']['z']
+				ex = wall['baseLine']['end']['x']
+				ey = wall['baseLine']['end']['y']
+				ez = wall['baseLine']['end']['z']
 				mod = 0
 
-				# define baseline positions
-				if obj[1]['@Wall'][i]['referenceLineLocation'] == 'Inside':
-					if obj[1]['@Wall'][i]['referenceLineStartIndex'] == -1:
-						obj[1]['@Wall'][i]['parameters']['WALL_KEY_REF_PARAM']['value'] = 4
-						mod = t/2
-					elif obj[1]['@Wall'][i]['referenceLineStartIndex'] == -3:
-						obj[1]['@Wall'][i]['parameters']['WALL_KEY_REF_PARAM']['value'] = 5
-						mod = t/2 * -1
+				if obj['@Wall'][i]['referenceLineStartIndex'] == -1:
+					mod = t/2
+				elif obj['@Wall'][i]['referenceLineStartIndex'] == -3:
+					mod = -t/2
 
-				if obj[1]['@Wall'][i]['referenceLineLocation'] == 'Center':
-					obj[1]['@Wall'][i]['parameters']['WALL_KEY_REF_PARAM']['value'] = 1
+				wall['baseLine']['start']['x'] = sx + mod
+				wall['baseLine']['end']['x'] = ex + mod
 
-				if obj[1]['@Wall'][i]['referenceLineLocation'] == 'Outside':
-					if obj[1]['@Wall'][i]['referenceLineStartIndex'] == 3:
-						obj[1]['@Wall'][i]['parameters']['WALL_KEY_REF_PARAM']['value'] = 2
-						mod = t/2
-					elif obj[1]['@Wall'][i]['referenceLineStartIndex'] == 1:
-						mod = t/2 * -1
-						obj[1]['@Wall'][i]['parameters']['WALL_KEY_REF_PARAM']['value'] = 4
+				obj['@Wall'][i] = bos.recompose_base(wall)
 
-				# strange workaround:
-				# we have to completely delete and recreate endpoints,
-				# in other case they will be stuck for some reason...
-				del obj[1]['@Wall'][i]['baseLine']['start']
-				del obj[1]['@Wall'][i]['baseLine']['end']
-
-				obj[1]['@Wall'][i]['baseLine']['start'] = {
-					'x': sx + mod,
-					'y': sy,
-					'z': sz,
-					'speckle_type': 'Objects.Geometry.Point',
-					'units': 'm'
-				}
-
-				obj[1]['@Wall'][i]['baseLine']['end'] = {
-					'x': ex + mod,
-					'y': ey,
-					'z': ez,
-					'speckle_type': 'Objects.Geometry.Point',
-					'units': 'm'
-				}
-
-			i += 1
-
-# spk.update(obj, 'walls 001c)
+# comitting
+spk.update(obj, 'walls 001d')
