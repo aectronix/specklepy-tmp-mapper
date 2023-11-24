@@ -8,6 +8,7 @@ from specklepy.api.client import SpeckleClient
 from specklepy.api.credentials import get_default_account
 from specklepy.api.credentials import get_local_accounts
 from specklepy.objects.base import Base
+from specklepy.objects.geometry import Point
 from specklepy.transports.server import ServerTransport
 from specklepy.serialization.base_object_serializer import BaseObjectSerializer
 
@@ -94,11 +95,14 @@ class Cloud():
 
 		print('commit "' + message + '" sent')
 
+class Line(Base):
+    start: Point = None
+    end: Point = None
+
 
 # Establish connections
 arc = Archicad(arg.port)
 spk = Cloud()
-bos = BaseObjectSerializer()
 
 # Get contents
 obj = spk.retrieve(arg.stream, arg.commit)
@@ -115,8 +119,10 @@ for s in selection:
 			if guId.lower() == obj['@Wall'][i]['applicationId'].lower():
 
 				print(guId)
-				# wall = bos.traverse_base(obj['@Wall'][i])[1]
-				wall = obj['@Wall'][i]
+
+				bos = BaseObjectSerializer()
+				wall = bos.traverse_base(obj['@Wall'][i])[1]
+				# wall = obj['@Wall'][i]
 
 				# update schema
 				wall['category'] = 'Walls'
@@ -159,9 +165,6 @@ for s in selection:
 				if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == 3:
 					mod = -mod
 
-				print(wall['referenceLineLocation'])
-				print(wall['referenceLineStartIndex'])
-
 				if wall['referenceLineLocation'] == 'Center':
 					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 0
 
@@ -189,29 +192,17 @@ for s in selection:
 				uy = vy/vw
 				print('unitv: (' + str(ux) + ',' + str(uy) + ')')
 
-				line = bos.traverse_base(obj['@Wall'][i]['baseLine'])[1]
 				if not wall['referenceLineLocation'] == 'Center':
-					# wall['baseLine']['start']['x'] = sx + 1
-					# wall['baseLine']['end']['x'] = ex + 1
-					# wall['baseLine']['start']['y'] = sy
-					# wall['baseLine']['end']['y'] = ey
-
-					# line['start']['x'] = sx + (ux * mod)
-					# line['end']['x'] = ex + (ux * mod)
-					# line['start']['y'] = sy + (uy * mod)
-					# line['end']['y'] = ey + (uy * mod)
-
-					line['start']['x'] = sx + 1
-					line['end']['x'] = ex + 1
-					line['start']['y'] = sy + 1
-					line['end']['y'] = ey + 1
-
-				wall['baseLine'] = bos.recompose_base(line)
+					wall['baseLine']['start']['x'] = sx + (ux * mod)
+					wall['baseLine']['end']['x'] = ex + (ux * mod)
+					wall['baseLine']['start']['y'] = sy + (uy * mod)
+					wall['baseLine']['end']['y'] = ey + (uy * mod)
 
 				print('result: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
 
 				# repack back
-				# obj['@Wall'][i] = bos.recompose_base(wall)
+				# obj['@Wall'][i] = wall
+				obj['@Wall'][i] = bos.recompose_base(wall)
 
 # comitting
-spk.update(obj, '001c1')
+spk.update(obj, '003a')
