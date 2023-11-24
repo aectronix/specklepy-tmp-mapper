@@ -105,6 +105,12 @@ spk = Cloud()
 obj = spk.retrieve(arg.stream, arg.commit)
 selection = arc.com.GetSelectedElements()
 
+# print(obj['elements'][0]['elements'][0])
+
+# bos = BaseObjectSerializer()
+# wall = bos.traverse_base(obj['elements'][0]['elements'][0])[1]
+# print(wall['parameters'])
+
 # Add level structure
 obj['@Levels'] = []
 
@@ -140,6 +146,8 @@ for s in selection:
 				wall['level']['referenceOnly'] = False
 
 				if not any(level.id == wall['level']['id'] for level in obj['@Levels']):
+
+					print('added ' + wall['level']['name'] + ' story')
 
 					level_bos = BaseObjectSerializer()
 					level = level_bos.traverse_base(Base())[1]
@@ -183,12 +191,17 @@ for s in selection:
 				ey = wall['baseLine']['end']['y']
 				ez = wall['baseLine']['end']['z']
 				mod = t/2
+				off = t/2 - wall['offsetFromOutside']
+
+				print(wall['referenceLineLocation'])
+				print(wall['referenceLineStartIndex'])
 
 				if wall['referenceLineLocation'] == 'Inside' and wall['referenceLineStartIndex'] == -1:
 					mod = -mod
 
 				if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == 3:
 					mod = -mod
+
 
 				if wall['referenceLineLocation'] == 'Center':
 					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 0
@@ -200,12 +213,12 @@ for s in selection:
 					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 3
 
 				# try to get a vector
-				print('line: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
+				#print('line: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
 
 				# vector deltas
 				dx = ex - sx
 				dy = ey - sy
-				print('delta: (' + str(dx) + ',' + str(dy) + ')')
+				#print('delta: (' + str(dx) + ',' + str(dy) + ')')
 
 				# vector
 				vx = -dy
@@ -213,12 +226,12 @@ for s in selection:
 
 				# vector weight
 				vw = math.sqrt((vx*1000) ** 2 + (vy*1000) ** 2)/1000
-				print('vector: (' + str(vx) + ',' + str(vy) + '), weight: ' + str(vw))
+				#print('vector: (' + str(vx) + ',' + str(vy) + '), weight: ' + str(vw))
 
 				# vector unit
 				ux = vx/vw
 				uy = vy/vw
-				print('unitv: (' + str(ux) + ',' + str(uy) + ')')
+				#print('unitv: (' + str(ux) + ',' + str(uy) + ')')
 
 				if not wall['referenceLineLocation'] == 'Center':
 					wall['baseLine']['start']['x'] = sx + (ux * mod)
@@ -226,29 +239,53 @@ for s in selection:
 					wall['baseLine']['start']['y'] = sy + (uy * mod)
 					wall['baseLine']['end']['y'] = ey + (uy * mod)
 
+				if wall['structure'] == 'Composite':
+
+					if wall['referenceLineStartIndex'] == -1:
+						off = -off
+
+					if wall['referenceLineStartIndex'] == 3:
+						off = -off
+
+					wall['baseLine']['start']['x'] = sx - (ux * off)
+					wall['baseLine']['end']['x'] = ex - (ux * off)
+
+					
+
 				print('result: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
 
 				# repack back
 				# obj['@Wall'][i] = wall
 				obj['@Wall'][i] = bos.recompose_base(wall)
 
-	if catName == 'Slab':
-		for i in range(0, len(obj['@Slab'])):
-			if guId.lower() == obj['@Slab'][i]['applicationId'].lower():
+	# if catName == 'Slab':
+	# 	for i in range(0, len(obj['@Slab'])):
+	# 		if guId.lower() == obj['@Slab'][i]['applicationId'].lower():
 
-				print(guId)
+	# 			print(guId)
 
-				bos = BaseObjectSerializer()
-				slab = bos.traverse_base(obj['@Slab'][i])[1]
-				# wall = obj['@Wall'][i]
+	# 			bos = BaseObjectSerializer()
+	# 			slab = bos.traverse_base(obj['@Slab'][i])[1]
+	# 			# wall = obj['@Wall'][i]
 
-				# update schema
-				slab['category'] = 'Floors'
-				slab['family'] = 'Floor'
-				slab['type'] = 'User Custom'
+	# 			# update schema
+	# 			slab['category'] = 'Floors'
+	# 			slab['family'] = 'Floor'
+	# 			slab['type'] = 'User Custom'
 
-				# repack back
-				obj['@Slab'][i] = bos.recompose_base(slab)
+	# 			# levels
+	# 			slab['level']['category'] = 'Levels'
+	# 			slab['level']['builtInCategory'] = 'OST_Levels'
+	# 			slab['level']['createView'] = True
+	# 			slab['level']['referenceOnly'] = False
+
+	# 			for s in range(0, len(slab['outline']['segments'])):
+	# 				slab['outline']['segments'][s]['start']['z'] = 2
+	# 				slab['outline']['segments'][s]['end']['z'] = 2
+
+
+	# 			# repack back
+	# 			obj['@Slab'][i] = bos.recompose_base(slab)
 
 # comitting
-spk.update(obj, 'levels 1b')
+spk.update(obj, 'comp 1j')
