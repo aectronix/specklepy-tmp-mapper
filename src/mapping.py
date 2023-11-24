@@ -95,9 +95,6 @@ class Cloud():
 
 		print('commit "' + message + '" sent')
 
-class Line(Base):
-    start: Point = None
-    end: Point = None
 
 
 # Establish connections
@@ -107,6 +104,9 @@ spk = Cloud()
 # Get contents
 obj = spk.retrieve(arg.stream, arg.commit)
 selection = arc.com.GetSelectedElements()
+
+# Add level structure
+obj['@Levels'] = []
 
 for s in selection:
 	# get main info
@@ -132,6 +132,31 @@ for s in selection:
 				wall['parameters'] = {}
 				wall['parameters']['speckle_type'] = 'Base'
 				wall['parameters']['applicationId'] = None
+
+				# levels
+				wall['level']['category'] = 'Levels'
+				wall['level']['builtInCategory'] = 'OST_Levels'
+				wall['level']['createView'] = True
+				wall['level']['referenceOnly'] = False
+
+				if not any(level.id == wall['level']['id'] for level in obj['@Levels']):
+
+					level_bos = BaseObjectSerializer()
+					level = level_bos.traverse_base(Base())[1]
+
+					level['id'] = wall['level']['id']
+					level['name'] = wall['level']['name']
+					level['index'] = wall['level']['index']
+					level['units'] = wall['level']['units']
+					level['category'] = 'Levels'
+					level['elevation'] = wall['level']['elevation']
+					level['createView'] = True
+					level['speckle_type'] = 'Objects.BuiltElements.Level:Objects.BuiltElements.Revit.RevitLevel'
+					level['referenceOnly'] = False
+					level['builtInCategory'] = 'OST_Levels'
+
+					obj['@Levels'].append(level_bos.recompose_base(level))
+
 
 				# insert location line parameter
 				wall['parameters']['WALL_KEY_REF_PARAM'] = {}
@@ -182,12 +207,15 @@ for s in selection:
 				dy = ey - sy
 				print('delta: (' + str(dx) + ',' + str(dy) + ')')
 
+				# vector
 				vx = -dy
 				vy = dx
 
+				# vector weight
 				vw = math.sqrt((vx*1000) ** 2 + (vy*1000) ** 2)/1000
 				print('vector: (' + str(vx) + ',' + str(vy) + '), weight: ' + str(vw))
 
+				# vector unit
 				ux = vx/vw
 				uy = vy/vw
 				print('unitv: (' + str(ux) + ',' + str(uy) + ')')
@@ -204,5 +232,23 @@ for s in selection:
 				# obj['@Wall'][i] = wall
 				obj['@Wall'][i] = bos.recompose_base(wall)
 
+	if catName == 'Slab':
+		for i in range(0, len(obj['@Slab'])):
+			if guId.lower() == obj['@Slab'][i]['applicationId'].lower():
+
+				print(guId)
+
+				bos = BaseObjectSerializer()
+				slab = bos.traverse_base(obj['@Slab'][i])[1]
+				# wall = obj['@Wall'][i]
+
+				# update schema
+				slab['category'] = 'Floors'
+				slab['family'] = 'Floor'
+				slab['type'] = 'User Custom'
+
+				# repack back
+				obj['@Slab'][i] = bos.recompose_base(slab)
+
 # comitting
-spk.update(obj, '003a')
+spk.update(obj, 'levels 1b')
