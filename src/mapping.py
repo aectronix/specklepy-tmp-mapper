@@ -89,7 +89,7 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "wall",
+		    branch_name = "main",
 		    message=message
 		)
 
@@ -104,6 +104,8 @@ spk = Cloud()
 # Get contents
 obj = spk.retrieve(arg.stream, arg.commit)
 selection = arc.com.GetSelectedElements()
+
+pidElevationToHome = [arc.utl.GetBuiltInPropertyId('General_TopElevationToHomeStory')]
 
 # print(obj['elements'][0]['elements'][0])
 
@@ -133,7 +135,11 @@ for s in selection:
 				# update schema
 				wall['category'] = 'Walls'
 				wall['family'] = 'Basic Wall'
-				wall['type'] = wall['structure'] + ' Structure'
+
+				if wall['structure'] == 'Basic':
+					wall['type'] =  str(wall['thickness']) + ' ' + wall['buildingMaterialName']
+				elif wall['structure'] == 'Composite':
+					wall['type'] = wall['compositeName']
 
 				wall['parameters'] = {}
 				wall['parameters']['speckle_type'] = 'Base'
@@ -194,24 +200,29 @@ for s in selection:
 				out = 0
 				if wall['offsetFromOutside']:
 					out = wall['offsetFromOutside']
-				# out = t/2 - wall['offsetFromOutside']
 				off = 0
 				if wall['referenceLineOffset']:
 					off = wall['referenceLineOffset']
-					# off = wall['referenceLineOffset']
 
-				print(wall['referenceLineLocation'])
-				print(wall['referenceLineStartIndex'])
-				print(wall['referenceLineOffset'])
+				# print(wall['referenceLineLocation'])
+				# print(wall['referenceLineStartIndex'])
+				# print(wall['referenceLineOffset'])
+				print(wall['type'])
 
 				if wall['referenceLineLocation'] == 'Center':
 					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 0
+				elif wall['referenceLineLocation'] == 'Core Center':
+					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 1
 
 				elif wall['referenceLineLocation'] == 'Outside':
 					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 2
+				elif wall['referenceLineLocation'] == 'Core Outside':
+					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 4
 
 				elif wall['referenceLineLocation'] == 'Inside':
 					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 3
+				elif wall['referenceLineLocation'] == 'Core Inside':
+					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 5
 
 				# try to get a vector
 				#print('line: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
@@ -262,42 +273,25 @@ for s in selection:
 				# Composite cases
 				if wall['structure'] == 'Composite' and not wall['referenceLineLocation'] == 'Center':
 
-					if wall['referenceLineLocation'] == 'Core Center':
+					if wall['referenceLineStartIndex'] == -1:
+						out = out
+					if wall['referenceLineStartIndex'] == -3:
+						out = t - out
+					if wall['referenceLineStartIndex'] == 3:
+						out = t - out
 
+					# temp
+					if off != 0:
 						if wall['referenceLineStartIndex'] == -1:
-							out = out
+							off = 0
 						if wall['referenceLineStartIndex'] == -3:
-							out = t - out
+							off = 0
 
-					# if wall['referenceLineLocation'] == 'Inside' and wall['referenceLineStartIndex'] == -1:
-					# 	mod = -mod
-					# if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == 3:
-					# 	mod = -mod
-
-					# if wall['referenceLineStartIndex'] == -1:
-					# 	out = -out
-					# if wall['referenceLineStartIndex'] == 3:
-					# 	out = -out
-
-					# if wall['referenceLineLocation'] == 'Outside':
-					# 	out = -out # strange but works
-
-					if wall['referenceLineLocation'] == 'Inside' or wall['referenceLineLocation'] == 'Core Inside':
-						off = 0
-					elif wall['referenceLineLocation'] == 'Outside' or wall['referenceLineLocation'] == 'Core Outside':
-						off = 0
-
-					start['x'] = sx + (ux * mod) - (ux * out)
-					end['x'] = ex + (ux * mod) - (ux * out)
-					start['y'] = sy + (uy * mod) - (uy * out)
-					end['y'] = ey + (uy * mod) - (uy * out)
-
-					# start['x'] = sx - (ux * out) - (ux * off)
-					# end['x'] = ex - (ux * out) - (ux * off)
-					# start['y'] = sy - (uy * out) - (uy * off)
-					# end['y'] = ey - (uy * out) - (uy * off)
+					start['x'] = sx + (ux * mod) - (ux * out) - (ux * off)
+					end['x'] = ex + (ux * mod) - (ux * out) - (ux * off)
+					start['y'] = sy + (uy * mod) - (uy * out) - (uy * off)
+					end['y'] = ey + (uy * mod) - (uy * out) - (uy * off)
 					
-
 				wall['baseLine']['start']['x'] = start['x']
 				wall['baseLine']['end']['x'] = end['x']
 				wall['baseLine']['start']['y'] = start['y']
@@ -309,34 +303,38 @@ for s in selection:
 				# obj['@Wall'][i] = wall
 				obj['@Wall'][i] = bos.recompose_base(wall)
 
-	# if catName == 'Slab':
-	# 	for i in range(0, len(obj['@Slab'])):
-	# 		if guId.lower() == obj['@Slab'][i]['applicationId'].lower():
+	if catName == 'Slab':
+		for i in range(0, len(obj['@Slab'])):
+			if guId.lower() == obj['@Slab'][i]['applicationId'].lower():
 
-	# 			print(guId)
+				print(guId)
 
-	# 			bos = BaseObjectSerializer()
-	# 			slab = bos.traverse_base(obj['@Slab'][i])[1]
-	# 			# wall = obj['@Wall'][i]
+				bos = BaseObjectSerializer()
+				slab = bos.traverse_base(obj['@Slab'][i])[1]
 
-	# 			# update schema
-	# 			slab['category'] = 'Floors'
-	# 			slab['family'] = 'Floor'
-	# 			slab['type'] = 'User Custom'
+				# update schema
+				slab['category'] = 'Floors'
+				slab['family'] = 'Floor'
+				slab['type'] = 'User Custom'
 
-	# 			# levels
-	# 			slab['level']['category'] = 'Levels'
-	# 			slab['level']['builtInCategory'] = 'OST_Levels'
-	# 			slab['level']['createView'] = True
-	# 			slab['level']['referenceOnly'] = False
+				# levels
+				slab['level']['category'] = 'Levels'
+				slab['level']['builtInCategory'] = 'OST_Levels'
+				slab['level']['createView'] = True
+				slab['level']['referenceOnly'] = False
 
-	# 			for s in range(0, len(slab['outline']['segments'])):
-	# 				slab['outline']['segments'][s]['start']['z'] = 2
-	# 				slab['outline']['segments'][s]['end']['z'] = 2
+				# top elevation to home story
+				elevationHome = arc.com.GetPropertyValuesOfElements([s], pidElevationToHome)
+				elevation = elevationHome[0].propertyValues[0].propertyValue.value
+				slab['TopElevationToHomeStory'] = elevation
+
+				# for s in range(0, len(slab['outline']['segments'])):
+				# 	slab['outline']['segments'][s]['start']['z'] = 2
+				# 	slab['outline']['segments'][s]['end']['z'] = 2
 
 
-	# 			# repack back
-	# 			obj['@Slab'][i] = bos.recompose_base(slab)
+				# repack back
+				obj['@Slab'][i] = bos.recompose_base(slab)
 
 # comitting
-spk.update(obj, 'w 1a9')
+spk.update(obj, 'test 001-a')
