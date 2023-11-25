@@ -191,15 +191,18 @@ for s in selection:
 				ey = wall['baseLine']['end']['y']
 				ez = wall['baseLine']['end']['z']
 				mod = t/2
-				out = t/2 - wall['offsetFromOutside']
+				out = 0
+				if wall['offsetFromOutside']:
+					out = wall['offsetFromOutside']
+				# out = t/2 - wall['offsetFromOutside']
 				off = 0
 				if wall['referenceLineOffset']:
 					off = wall['referenceLineOffset']
 					# off = wall['referenceLineOffset']
 
-				# print(wall['referenceLineLocation'])
-				# print(wall['referenceLineStartIndex'])
-				# print(wall['referenceLineOffset'])
+				print(wall['referenceLineLocation'])
+				print(wall['referenceLineStartIndex'])
+				print(wall['referenceLineOffset'])
 
 				if wall['referenceLineLocation'] == 'Center':
 					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 0
@@ -257,25 +260,42 @@ for s in selection:
 					end['y'] = ey + (uy * mod) - (uy * off)
 
 				# Composite cases
-				if wall['structure'] == 'Composite':
+				if wall['structure'] == 'Composite' and not wall['referenceLineLocation'] == 'Center':
 
-					if wall['referenceLineLocation'] == 'Inside' and wall['referenceLineStartIndex'] == -1:
-						mod = -mod
-					if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == 3:
-						mod = -mod
+					if wall['referenceLineLocation'] == 'Core Center':
 
-					if wall['referenceLineStartIndex'] == -1:
-						out = -out
-					if wall['referenceLineStartIndex'] == 3:
-						out = -out
+						if wall['referenceLineStartIndex'] == -1:
+							out = out
+						if wall['referenceLineStartIndex'] == -3:
+							out = t - out
 
-					if wall['referenceLineLocation'] == 'Outside':
-						out = -out # strange but works
+					# if wall['referenceLineLocation'] == 'Inside' and wall['referenceLineStartIndex'] == -1:
+					# 	mod = -mod
+					# if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == 3:
+					# 	mod = -mod
 
-					start['x'] = sx - (ux * out)
-					end['x'] = ex - (ux * out)
-					start['y'] = sy - (uy * out)
-					end['y'] = ey - (uy * out)	
+					# if wall['referenceLineStartIndex'] == -1:
+					# 	out = -out
+					# if wall['referenceLineStartIndex'] == 3:
+					# 	out = -out
+
+					# if wall['referenceLineLocation'] == 'Outside':
+					# 	out = -out # strange but works
+
+					if wall['referenceLineLocation'] == 'Inside' or wall['referenceLineLocation'] == 'Core Inside':
+						off = 0
+					elif wall['referenceLineLocation'] == 'Outside' or wall['referenceLineLocation'] == 'Core Outside':
+						off = 0
+
+					start['x'] = sx + (ux * mod) - (ux * out)
+					end['x'] = ex + (ux * mod) - (ux * out)
+					start['y'] = sy + (uy * mod) - (uy * out)
+					end['y'] = ey + (uy * mod) - (uy * out)
+
+					# start['x'] = sx - (ux * out) - (ux * off)
+					# end['x'] = ex - (ux * out) - (ux * off)
+					# start['y'] = sy - (uy * out) - (uy * off)
+					# end['y'] = ey - (uy * out) - (uy * off)
 					
 
 				wall['baseLine']['start']['x'] = start['x']
@@ -283,7 +303,7 @@ for s in selection:
 				wall['baseLine']['start']['y'] = start['y']
 				wall['baseLine']['end']['y'] = end['y']
 
-				print('result: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
+				# print('result: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
 
 				# repack back
 				# obj['@Wall'][i] = wall
@@ -319,4 +339,4 @@ for s in selection:
 	# 			obj['@Slab'][i] = bos.recompose_base(slab)
 
 # comitting
-spk.update(obj, 'walls 1o')
+spk.update(obj, 'w 1a9')
