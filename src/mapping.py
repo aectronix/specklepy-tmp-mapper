@@ -89,7 +89,7 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "map",
+		    branch_name = "wall",
 		    message=message
 		)
 
@@ -133,7 +133,7 @@ for s in selection:
 				# update schema
 				wall['category'] = 'Walls'
 				wall['family'] = 'Basic Wall'
-				wall['type'] = 'User Custom'
+				wall['type'] = wall['structure'] + ' Structure'
 
 				wall['parameters'] = {}
 				wall['parameters']['speckle_type'] = 'Base'
@@ -191,17 +191,15 @@ for s in selection:
 				ey = wall['baseLine']['end']['y']
 				ez = wall['baseLine']['end']['z']
 				mod = t/2
-				off = t/2 - wall['offsetFromOutside']
+				out = t/2 - wall['offsetFromOutside']
+				off = 0
+				if wall['referenceLineOffset']:
+					off = wall['referenceLineOffset']
+					# off = wall['referenceLineOffset']
 
-				print(wall['referenceLineLocation'])
-				print(wall['referenceLineStartIndex'])
-
-				if wall['referenceLineLocation'] == 'Inside' and wall['referenceLineStartIndex'] == -1:
-					mod = -mod
-
-				if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == 3:
-					mod = -mod
-
+				# print(wall['referenceLineLocation'])
+				# print(wall['referenceLineStartIndex'])
+				# print(wall['referenceLineOffset'])
 
 				if wall['referenceLineLocation'] == 'Center':
 					wall['parameters']['WALL_KEY_REF_PARAM']['value'] = 0
@@ -214,6 +212,9 @@ for s in selection:
 
 				# try to get a vector
 				#print('line: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
+
+				start = { 'x': sx, 'y': sy }
+				end = { 'x': ex, 'y': ey }
 
 				# vector deltas
 				dx = ex - sx
@@ -233,24 +234,54 @@ for s in selection:
 				uy = vy/vw
 				#print('unitv: (' + str(ux) + ',' + str(uy) + ')')
 
-				if not wall['referenceLineLocation'] == 'Center':
-					wall['baseLine']['start']['x'] = sx + (ux * mod)
-					wall['baseLine']['end']['x'] = ex + (ux * mod)
-					wall['baseLine']['start']['y'] = sy + (uy * mod)
-					wall['baseLine']['end']['y'] = ey + (uy * mod)
+				# Regular basic walls
+				if wall['structure'] == 'Basic' and not wall['referenceLineLocation'] == 'Center':
 
+					if wall['referenceLineLocation'] == 'Inside' and wall['referenceLineStartIndex'] == -1:
+						mod = -mod
+						off = -off
+					if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == 3:
+						mod = -mod
+						off = -off
+
+					if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == -3:
+						if off > 0:
+							off = t - off
+						elif off < 0:
+							off = 1 * (t - off)
+
+					# if not wall['referenceLineLocation'] == 'Center':
+					start['x'] = sx + (ux * mod) - (ux * off)
+					end['x'] = ex + (ux * mod) - (ux * off)
+					start['y'] = sy + (uy * mod) - (uy * off)
+					end['y'] = ey + (uy * mod) - (uy * off)
+
+				# Composite cases
 				if wall['structure'] == 'Composite':
 
+					if wall['referenceLineLocation'] == 'Inside' and wall['referenceLineStartIndex'] == -1:
+						mod = -mod
+					if wall['referenceLineLocation'] == 'Outside' and wall['referenceLineStartIndex'] == 3:
+						mod = -mod
+
 					if wall['referenceLineStartIndex'] == -1:
-						off = -off
-
+						out = -out
 					if wall['referenceLineStartIndex'] == 3:
-						off = -off
+						out = -out
 
-					wall['baseLine']['start']['x'] = sx - (ux * off)
-					wall['baseLine']['end']['x'] = ex - (ux * off)
+					if wall['referenceLineLocation'] == 'Outside':
+						out = -out # strange but works
 
+					start['x'] = sx - (ux * out)
+					end['x'] = ex - (ux * out)
+					start['y'] = sy - (uy * out)
+					end['y'] = ey - (uy * out)	
 					
+
+				wall['baseLine']['start']['x'] = start['x']
+				wall['baseLine']['end']['x'] = end['x']
+				wall['baseLine']['start']['y'] = start['y']
+				wall['baseLine']['end']['y'] = end['y']
 
 				print('result: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
 
@@ -288,4 +319,4 @@ for s in selection:
 	# 			obj['@Slab'][i] = bos.recompose_base(slab)
 
 # comitting
-spk.update(obj, 'comp 1j')
+spk.update(obj, 'walls 1o')
