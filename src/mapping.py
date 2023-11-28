@@ -90,7 +90,7 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "beam",
+		    branch_name = "main",
 		    message=message
 		)
 
@@ -207,6 +207,20 @@ for s in selection:
 					'isTypeParameter': False,
 					'units': None,
 					'value': az
+				}
+
+				beam['parameters']['Y_OFFSET_VALUE'] = {
+					'name': 'y Offset Value',
+					'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+					'applicationId': None,
+					'applicationInternalName': 'Y_OFFSET_VALUE',
+					'applicationUnit': 'autodesk.unit.unit:meters-1.0.1',
+					'applicationUnitType': None,
+					'isReadOnly': False,
+					'isShared': False,
+					'isTypeParameter': False,
+					'units': None,
+					'value': beam['offset']
 				}
 
 				# repack back
@@ -590,4 +604,4 @@ obj['@Levels'].sort(key=lambda l: l.index)
 
 
 # # comitting
-spk.update(obj, 'beams 1b')
+spk.update(obj, 'beams 1b1')
