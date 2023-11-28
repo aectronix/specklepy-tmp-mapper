@@ -1,6 +1,7 @@
 import argparse
 import json
 import math
+import re
 import time
 
 from specklepy.api import operations
@@ -8,7 +9,7 @@ from specklepy.api.client import SpeckleClient
 from specklepy.api.credentials import get_default_account
 from specklepy.api.credentials import get_local_accounts
 from specklepy.objects.base import Base
-from specklepy.objects.geometry import Point
+from specklepy.objects.other import Collection
 from specklepy.transports.server import ServerTransport
 from specklepy.serialization.base_object_serializer import BaseObjectSerializer
 
@@ -127,38 +128,14 @@ spk = Cloud()
 
 # Get contents
 obj = spk.retrieve(arg.stream, arg.commit)
+obj2 = spk.retrieve('aeb487f0e6', '62aaefe493')
 selection = arc.com.GetSelectedElements()
 
 pidElevationToHome = [arc.utl.GetBuiltInPropertyId('General_TopElevationToHomeStory')]
+pidTopLinkStory = [arc.utl.GetBuiltInPropertyId('General_TopLinkStory')]
 
-# for i in range(0, len(obj['elements'][0]['elements'])):
-# 	bos = BaseObjectSerializer()
-# 	wall = bos.traverse_base(obj['elements'][0]['elements'][i])[1]
-
-# 	wall['level']['elementId'] = None
-# 	wall['level']['applicationId'] = None
-# 	# wall['level']['speckle_type'] = 'Objects.BuiltElements.Level:Objects.BuiltElements.Archicad.ArchicadLevel'
-
-# 	# repack back
-# 	obj['elements'][0]['elements'][i] = bos.recompose_base(wall)
-
-
-# for i in range(0, len(obj['@Levels'])):
-# 	bos = BaseObjectSerializer()
-# 	level = bos.traverse_base(obj['@Levels'][i])[1]
-
-# 	level['elementId'] = None
-# 	level['applicationId'] = None
-# 	# level['speckle_type'] = 'Objects.BuiltElements.Level:Objects.BuiltElements.Archicad.ArchicadLevel'
-
-# 	# repack back
-# 	obj['@Levels'][i] = bos.recompose_base(level)
-
-# Add level structure
+#Add level structure
 obj['@Levels'] = []
-# obj['@Levels'] = [
-# 	make_level(-2, 'LB1', -5.4), make_level(-1, 'LP0', -2.7), make_level(0, 'LGF', 0), make_level(1, 'L01', 3), make_level(2, 'L02', 6), make_level(3, 'L03', 9)
-# ]
 
 for s in selection:
 	# get main info
@@ -174,20 +151,6 @@ for s in selection:
 
 				bos = BaseObjectSerializer()
 				wall = bos.traverse_base(obj['@Wall'][i])[1]
-				# wall = obj['@Wall'][i]
-
-				# update schema
-				wall['category'] = 'Walls'
-				wall['family'] = 'Basic Wall'
-
-				if wall['structure'] == 'Basic':
-					wall['type'] =  str(wall['thickness']) + ' ' + wall['buildingMaterialName']
-				elif wall['structure'] == 'Composite':
-					wall['type'] = wall['compositeName']
-
-				wall['parameters'] = {}
-				wall['parameters']['speckle_type'] = 'Base'
-				wall['parameters']['applicationId'] = None
 
 				# levels
 				wall['level']['category'] = 'Levels'
@@ -198,6 +161,38 @@ for s in selection:
 				if not hasLevel(obj['@Levels'], wall['level']['index']):
 					level = newLevel(wall['level']['index'], wall['level']['name'], wall['level']['elevation'])
 					obj['@Levels'].append(level)
+
+				topLinkStory = arc.com.GetPropertyValuesOfElements([s], pidTopLinkStory)
+				print(topLinkStory)
+				if topLinkStory and not hasattr(topLinkStory[0].propertyValues[0], 'error'):
+					topLink = re.search(r'Home \+ (\d+).*\((.*?)\)', topLinkStory[0].propertyValues[0].propertyValue.value)
+					if topLink:
+						index = wall['level']['index'] + int(topLink.group(1))
+						name = topLink.group(2)
+						elevation = wall['level']['elevation'] + wall['baseOffset'] + wall['height'] - wall['topOffset'] 
+
+						topLevel = newLevel(index, name, elevation)
+						if not hasLevel(obj['@Levels'], index):
+							obj['@Levels'].append(topLevel)
+							print('added ' + str(index) + '. ' + name + ' (' + str(elevation) + ')')
+
+						if not 'topLevel' in wall:
+							top = BaseObjectSerializer()
+							wall['topLevel'] = top.traverse_base(topLevel)[1]
+				
+				# update schema
+				wall['category'] = 'Walls'
+				wall['builtInCategory'] = 'OST_Walls'
+				wall['family'] = 'Basic Wall'
+
+				if wall['structure'] == 'Basic':
+					wall['type'] =  str(wall['thickness']) + ' ' + wall['buildingMaterialName']
+				elif wall['structure'] == 'Composite':
+					wall['type'] = wall['compositeName']
+
+				wall['parameters'] = {}
+				wall['parameters']['speckle_type'] = 'Base'
+				wall['parameters']['applicationId'] = None
 
 				# insert location line parameter
 				wall['parameters']['WALL_KEY_REF_PARAM'] = {}
@@ -324,45 +319,51 @@ for s in selection:
 				wall['baseLine']['start']['y'] = start['y']
 				wall['baseLine']['end']['y'] = end['y']
 
+
+				wall['speckle_type'] = None
+				wall['speckle_type'] = 'Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall'
+
 				# print('result: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
 
 				# repack back
 				# obj['@Wall'][i] = wall
 				obj['@Wall'][i] = bos.recompose_base(wall)
 
-	if catName == 'Slab':
-		for i in range(0, len(obj['@Slab'])):
-			if guId.lower() == obj['@Slab'][i]['applicationId'].lower():
+	# if catName == 'Slab':
+	# 	for i in range(0, len(obj['@Slab'])):
+	# 		if guId.lower() == obj['@Slab'][i]['applicationId'].lower():
 
-				print(guId)
+	# 			print(guId)
 
-				bos = BaseObjectSerializer()
-				slab = bos.traverse_base(obj['@Slab'][i])[1]
+	# 			bos = BaseObjectSerializer()
+	# 			slab = bos.traverse_base(obj['@Slab'][i])[1]
 
-				# update schema
-				slab['category'] = 'Floors'
-				slab['family'] = 'Floor'
-				slab['type'] = 'User Custom'
+	# 			# update schema
+	# 			slab['category'] = 'Floors'
+	# 			slab['family'] = 'Floor'
+	# 			slab['type'] = 'User Custom'
 
-				# levels
-				slab['level']['category'] = 'Levels'
-				slab['level']['builtInCategory'] = 'OST_Levels'
-				slab['level']['createView'] = True
-				slab['level']['referenceOnly'] = False
+	# 			# levels
+	# 			slab['level']['category'] = 'Levels'
+	# 			slab['level']['builtInCategory'] = 'OST_Levels'
+	# 			slab['level']['createView'] = True
+	# 			slab['level']['referenceOnly'] = False
 
-				if not hasLevel(obj['@Levels'], slab['level']['index']):
-					level = newLevel(slab['level']['index'], slab['level']['name'], slab['level']['elevation'])
-					obj['@Levels'].append(level)
+	# 			if not hasLevel(obj['@Levels'], slab['level']['index']):
+	# 				level = newLevel(slab['level']['index'], slab['level']['name'], slab['level']['elevation'])
+	# 				obj['@Levels'].append(level)
 
-				# top elevation to home story
-				elevationHome = arc.com.GetPropertyValuesOfElements([s], pidElevationToHome)
-				elevation = elevationHome[0].propertyValues[0].propertyValue.value
-				slab['TopElevationToHomeStory'] = elevation
+	# 			# top elevation to home story
+	# 			elevationHome = arc.com.GetPropertyValuesOfElements([s], pidElevationToHome)
+	# 			elevation = elevationHome[0].propertyValues[0].propertyValue.value
+	# 			slab['TopElevationToHomeStory'] = elevation
 
-				# repack back
-				obj['@Slab'][i] = bos.recompose_base(slab)
+	# 			# repack back
+	# 			obj['@Slab'][i] = bos.recompose_base(slab)
 
 obj['@Levels'].sort(key=lambda l: l.index)
+# obj['@Levels'] = None
 
-# comitting
-spk.update(obj, 'levels 1d')
+
+# # comitting
+spk.update(obj, 'test 001c')
