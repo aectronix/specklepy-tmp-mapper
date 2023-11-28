@@ -127,7 +127,7 @@ arc = Archicad(arg.port)
 spk = Cloud()
 
 # Get contents
-obj2 = spk.retrieve('77f6bf4c3d', '6cf320aa1c')
+# obj2 = spk.retrieve('77f6bf4c3d', '6cf320aa1c')
 obj = spk.retrieve(arg.stream, arg.commit)
 selection = arc.com.GetSelectedElements()
 
@@ -152,22 +152,21 @@ for s in selection:
 				bos = BaseObjectSerializer()
 				column = bos.traverse_base(obj['@Column'][i])[1]
 
-				column2 = bos.traverse_base(obj2['elements'][0]['elements'][i])[1]
-
 				# # update schema
 				column['category'] = 'Structural Columns'
-				column['family'] = 'RLL_Каркас_Вертикал_Прямокутна_Бетон'
 				column['builtInCategory'] = 'OST_StructuralColumns'
 
 				column['speckle_type'] = None
 				column['speckle_type'] = 'Objects.BuiltElements.Column:Objects.BuiltElements.Revit.RevitColumn'
 
+				column['baseOffset'] = column['bottomOffset']
 				nHeight = column['segments']['Segment #1']['assemblySegmentData']['nominalHeight']
 				nWidth = column['segments']['Segment #1']['assemblySegmentData']['nominalWidth']
 
-				column['type'] = column['segments']['Segment #1']['assemblySegmentData']['buildingMaterial'] + ' ' + str(nHeight) + 'x' + str(nWidth)
-
-				column['baseOffset'] = column['bottomOffset']
+				if column['segments']['Segment #1']['assemblySegmentData']['modelElemStructureType'] == 'Complex Profile':
+					column['type'] = column['segments']['Segment #1']['assemblySegmentData']['profileAttrName'] + ' ' + str(nHeight) + 'x' + str(nWidth)
+				else:
+					column['type'] = column['segments']['Segment #1']['assemblySegmentData']['buildingMaterial'] + ' ' + str(nHeight) + 'x' + str(nWidth)
 
 				# # levels
 				column['level']['category'] = 'Levels'
@@ -521,4 +520,4 @@ obj['@Levels'].sort(key=lambda l: l.index)
 
 
 # # comitting
-spk.update(obj, 'column 1b7')
+spk.update(obj, 'column 1a1')
