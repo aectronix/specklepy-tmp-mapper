@@ -90,7 +90,7 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "main",
+		    branch_name = "zone",
 		    message=message
 		)
 
@@ -121,6 +121,15 @@ def hasLevel(levels, index):
 			return True
 	return False
 
+def hasLine(lines, line):
+
+	for l in lines:
+		if (l and
+			l.baseCurve['start']['x'] == line['start']['x'] and l.baseCurve['start']['y'] == line['start']['y'] and l.baseCurve['start']['z'] == line['start']['z'] and
+			l.baseCurve['end']['x'] == line['end']['x'] and l.baseCurve['end']['y'] == line['end']['y'] and l.baseCurve['end']['z'] == line['end']['z']
+			): return True
+	return False
+
 
 # Establish connections
 arc = Archicad(arg.port)
@@ -134,8 +143,19 @@ selection = arc.com.GetSelectedElements()
 pidElevationToHome = [arc.utl.GetBuiltInPropertyId('General_TopElevationToHomeStory')]
 pidTopLinkStory = [arc.utl.GetBuiltInPropertyId('General_TopLinkStory')]
 
-#Add level structure
 obj['@Levels'] = []
+obj['@elements'] = []
+
+# separator lines
+bos = BaseObjectSerializer()
+lines = bos.traverse_base(Base())[1]
+lines['name'] = 'Room Separation Lines'
+lines['speckle_type'] = 'Speckle.Core.Models.Collection'
+lines['applicationId'] = 'Room Separation Lines'
+lines['collectionType'] = 'Revit Category'
+lines['elements'] = []
+
+obj['@elements'].append(bos.recompose_base(lines))
 
 for s in selection:
 	# get main info
@@ -299,6 +319,9 @@ for s in selection:
 				wall['level']['createView'] = True
 				wall['level']['referenceOnly'] = False
 
+				wall['speckle_type'] = None
+				wall['speckle_type'] = 'Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall'
+
 				if not hasLevel(obj['@Levels'], wall['level']['index']):
 					level = newLevel(wall['level']['index'], wall['level']['name'], wall['level']['elevation'])
 					obj['@Levels'].append(level)
@@ -456,10 +479,6 @@ for s in selection:
 
 				# wall['flipped'] = False # todo
 
-
-				# wall['speckle_type'] = None
-				# wall['speckle_type'] = 'Objects.BuiltElements.Wall:Objects.BuiltElements.Revit.RevitWall'
-
 				# print('result: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
 
 				# repack back
@@ -533,75 +552,107 @@ for s in selection:
 				obj['@Slab'][i] = bos.recompose_base(slab)
 
 
-	if catName == 'Roof':
-		for i in range(0, len(obj['@Roof'])):
-			if guId.lower() == obj['@Roof'][i]['applicationId'].lower():
+	# if catName == 'Roof':
+	# 	for i in range(0, len(obj['@Roof'])):
+	# 		if guId.lower() == obj['@Roof'][i]['applicationId'].lower():
+
+	# 			print(guId)
+
+	# 			bos = BaseObjectSerializer()
+	# 			roof = bos.traverse_base(obj['@Roof'][i])[1]
+
+	# 			# update schema
+	# 			roof['category'] = 'Roofs'
+	# 			roof['family'] = 'Basic Roof'
+	# 			roof['builtInCategory'] = 'OST_Roofs'
+
+	# 			if roof['structure'] == 'Basic':
+	# 				roof['type'] =  str(roof['thickness']) + ' ' + roof['buildingMaterialName']
+	# 			elif roof['structure'] == 'Composite':
+	# 				roof['type'] = roof['compositeName']
+
+	# 			roof['speckle_type'] = None
+	# 			roof['speckle_type'] = 'Objects.BuiltElements.Roof:Objects.BuiltElements.Revit.RevitRoof.RevitRoof:Objects.BuiltElements.Revit.RevitRoof.RevitFootprintRoof'
+
+	# 			# levels
+	# 			roof['level']['category'] = 'Levels'
+	# 			roof['level']['builtInCategory'] = 'OST_Levels'
+	# 			roof['level']['createView'] = True
+	# 			roof['level']['referenceOnly'] = False
+	# 			roof['level']['speckle_type'] = None
+	# 			roof['level']['speckle_type'] = 'Objects.BuiltElements.Level:Objects.BuiltElements.Revit.RevitLevel'
+
+	# 			if not hasLevel(obj['@Levels'], roof['level']['index']):
+	# 				level = newLevel(roof['level']['index'], roof['level']['name'], roof['level']['elevation'])
+	# 				obj['@Levels'].append(level)
+
+	# 			# top elevation to home story
+	# 			# elevationHome = arc.com.GetPropertyValuesOfElements([s], pidElevationToHome)
+	# 			# elevation = elevationHome[0].propertyValues[0].propertyValue.value
+	# 			# roof['TopElevationToHomeStory'] = elevation
+
+	# 			roof['parameters'] = {}
+	# 			roof['parameters']['speckle_type'] = 'Base'
+	# 			roof['parameters']['applicationId'] = None
+
+	# 			# roof['parameters']['FLOOR_HEIGHTABOVELEVEL_PARAM'] = {
+	# 			# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+	# 			# 	'applicationId': None,
+	# 			# 	'applicationInternalName': 'FLOOR_HEIGHTABOVELEVEL_PARAM',
+	# 			# 	'applicationUnit': 'autodesk.unit.unit:meters-1.0.1',
+	# 			# 	'applicationUnitType': None,
+	# 			# 	'isReadOnly': False,
+	# 			# 	'isShared': False,
+	# 			# 	'isTypeParameter': False,
+	# 			# 	'name': 'Height Offset From Level',
+	# 			# 	'units': 'm',
+	# 			# 	'value': elevation
+	# 			# }
+
+	# 			# fix position via segments
+	# 			# for segment in roof['outline']['segments']:
+	# 			# 	segment['start']['z'] = roof['level']['elevation'] + elevation
+	# 			# 	segment['end']['z'] = roof['level']['elevation'] + elevation
+
+	# 			# repack back
+	# 			obj['@Roof'][i] = bos.recompose_base(roof)
+
+
+	if catName == 'Zone':
+		for i in range(0, len(obj['@Zone'])):
+			if guId.lower() == obj['@Zone'][i]['applicationId'].lower():
 
 				print(guId)
 
 				bos = BaseObjectSerializer()
-				roof = bos.traverse_base(obj['@Roof'][i])[1]
+				zone = bos.traverse_base(obj['@Zone'][i])[1]
 
-				# update schema
-				roof['category'] = 'Roofs'
-				roof['family'] = 'Basic Roof'
-				roof['builtInCategory'] = 'OST_Roofs'
+				zone['type'] = 'Room'
+				zone['category'] = 'Rooms'
 
-				if roof['structure'] == 'Basic':
-					roof['type'] =  str(roof['thickness']) + ' ' + roof['buildingMaterialName']
-				elif roof['structure'] == 'Composite':
-					roof['type'] = roof['compositeName']
-
-				roof['speckle_type'] = None
-				roof['speckle_type'] = 'Objects.BuiltElements.Roof:Objects.BuiltElements.Revit.RevitRoof.RevitRoof:Objects.BuiltElements.Revit.RevitRoof.RevitFootprintRoof'
-
-				# levels
-				roof['level']['category'] = 'Levels'
-				roof['level']['builtInCategory'] = 'OST_Levels'
-				roof['level']['createView'] = True
-				roof['level']['referenceOnly'] = False
-				roof['level']['speckle_type'] = None
-				roof['level']['speckle_type'] = 'Objects.BuiltElements.Level:Objects.BuiltElements.Revit.RevitLevel'
-
-				if not hasLevel(obj['@Levels'], roof['level']['index']):
-					level = newLevel(roof['level']['index'], roof['level']['name'], roof['level']['elevation'])
+				if not hasLevel(obj['@Levels'], zone['level']['index']):
+					level = newLevel(zone['level']['index'], zone['level']['name'], zone['level']['elevation'])
 					obj['@Levels'].append(level)
 
-				# top elevation to home story
-				# elevationHome = arc.com.GetPropertyValuesOfElements([s], pidElevationToHome)
-				# elevation = elevationHome[0].propertyValues[0].propertyValue.value
-				# roof['TopElevationToHomeStory'] = elevation
-
-				roof['parameters'] = {}
-				roof['parameters']['speckle_type'] = 'Base'
-				roof['parameters']['applicationId'] = None
-
-				# roof['parameters']['FLOOR_HEIGHTABOVELEVEL_PARAM'] = {
-				# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
-				# 	'applicationId': None,
-				# 	'applicationInternalName': 'FLOOR_HEIGHTABOVELEVEL_PARAM',
-				# 	'applicationUnit': 'autodesk.unit.unit:meters-1.0.1',
-				# 	'applicationUnitType': None,
-				# 	'isReadOnly': False,
-				# 	'isShared': False,
-				# 	'isTypeParameter': False,
-				# 	'name': 'Height Offset From Level',
-				# 	'units': 'm',
-				# 	'value': elevation
-				# }
-
-				# fix position via segments
-				# for segment in roof['outline']['segments']:
-				# 	segment['start']['z'] = roof['level']['elevation'] + elevation
-				# 	segment['end']['z'] = roof['level']['elevation'] + elevation
-
 				# repack back
-				obj['@Roof'][i] = bos.recompose_base(roof)
+				obj['@Zone'][i] = bos.recompose_base(zone)
+
+				for segment in zone['outline']['segments']:
+
+					# if not hasLine(obj['@elements'][0]['elements'], segment):
+					bbs = BaseObjectSerializer()
+					boundry = bbs.traverse_base(Base())[1]
+
+					boundry['level'] = zone['level']
+					boundry['units'] = 'm'
+					boundry['baseCurve'] = segment
+					boundry['speckle_type'] = 'Objects.BuiltElements.Revit.Curve.RoomBoundaryLine'
+
+					obj['@elements'][0]['elements'].append(bbs.recompose_base(boundry))
 
 
+# reorder levels
 obj['@Levels'].sort(key=lambda l: l.index)
-# obj['@Levels'] = None
 
-
-# # comitting
-spk.update(obj, 'beams 1b1')
+# comitting
+spk.update(obj, 'zone test 1c5')
