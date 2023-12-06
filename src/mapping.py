@@ -90,7 +90,7 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "zone",
+		    branch_name = "door",
 		    message=message
 		)
 
@@ -136,7 +136,7 @@ arc = Archicad(arg.port)
 spk = Cloud()
 
 # Get contents
-# obj2 = spk.retrieve('77f6bf4c3d', '6cf320aa1c')
+# obj2 = spk.retrieve('aeb487f0e6', 'ea9ee1495e')
 obj = spk.retrieve(arg.stream, arg.commit)
 selection = arc.com.GetSelectedElements()
 
@@ -157,17 +157,22 @@ lines['elements'] = []
 
 obj['@elements'].append(bos.recompose_base(lines))
 
+cc = 0
 for s in selection:
 	# get main info
 	guId = str(s.elementId.guid)
 	catIds = arc.com.GetTypesOfElements([s])
 	catName = catIds[0].typeOfElement.elementType
 
+	cc += 1
+
+	print('processing ' + str(cc) + '/' + str(len(selection)) + '...', end='\r')
+
 	if catName == 'Beam':
 		for i in range(0, len(obj['@Beam'])):
 			if guId.lower() == obj['@Beam'][i]['applicationId'].lower():
 
-				print(guId)
+				# print(guId)
 
 				bos = BaseObjectSerializer()
 				beam = bos.traverse_base(obj['@Beam'][i])[1]
@@ -251,7 +256,7 @@ for s in selection:
 		for i in range(0, len(obj['@Column'])):
 			if guId.lower() == obj['@Column'][i]['applicationId'].lower():
 
-				print(guId)
+				# print(guId)
 
 				bos = BaseObjectSerializer()
 				column = bos.traverse_base(obj['@Column'][i])[1]
@@ -308,7 +313,7 @@ for s in selection:
 		for i in range(0, len(obj['@Wall'])):
 			if guId.lower() == obj['@Wall'][i]['applicationId'].lower():
 
-				print(guId)
+				# print(guId)
 
 				bos = BaseObjectSerializer()
 				wall = bos.traverse_base(obj['@Wall'][i])[1]
@@ -477,9 +482,204 @@ for s in selection:
 				wall['baseLine']['start']['y'] = start['y']
 				wall['baseLine']['end']['y'] = end['y']
 
-				# wall['flipped'] = False # todo
+				# openings
+				if wall['elements']:
 
-				# print('result: (' + str(wall['baseLine']['start']['x']) + ',' + str(wall['baseLine']['start']['y']) + ') -> (' + str(wall['baseLine']['end']['x']) + ',' + str(wall['baseLine']['end']['y']) + ')')
+					doors  = arc.com.GetElementsByType('Door')
+
+					# todo: for all types!!!
+					for d in doors:
+
+						guId = str(d.elementId.guid)
+						for j in range(0, len(wall['elements'])):
+							if guId.lower() == wall['elements'][j]['applicationId'].lower():
+
+								print('found doors...')
+
+								bos2 = BaseObjectSerializer()
+								# door2 = bos2.traverse_base(obj2['elements'][0]['elements'][1]['elements'][0])[1]
+								# door = door2
+
+								door = wall['elements'][j]
+
+								# definition, parameters
+
+								door['category'] = 'Doors'
+								door['type'] = door['libraryPart'] + str(door['width']) + 'x' + str(door['height'])
+								door['builtInCategory'] = 'OST_Doors'
+								door['speckle_type'] = 'Objects.Other.Revit.RevitInstance'
+
+								door['level'] = wall['level']
+
+								door['units'] = 'm'
+
+								door['definition'] = {
+									'units': 'm',
+									'type': door['libraryPart'] + str(door['width']) + 'x' + str(door['height']),
+									'category': 'Doors',
+									'speckle_type': 'Objects.BuiltElements.Revit.RevitElementType:Objects.BuiltElements.Revit.RevitSymbolElementType',
+									'placementType': 'OneLevelBasedHosted',
+									'builtInCategory': 'OST_Doors',
+									# 'parameters': door2['definition']['parameters'],
+									# 'displayValue': door2['definition']['displayValue']
+
+								}
+
+								# door['mirrored'] = True
+								
+
+								if door['refSide'] == True:
+									door['handFlipped'] = True
+
+								door['transform'] = {
+									'units': 'm',
+									'speckle_type': 'Objects.Other.Transform',
+									'matrix': [
+										1, 0, 0, 	0 + wall['baseLine']['start']['x'] - door['objLoc'],
+										0, 1, 0, 	0, # + door['revealDepthFromSide'],
+										0, 0, 1,	0 + door['lower'],
+
+										0, 0, 0,	1
+									]
+								}
+
+								# door['parameters'] = door2['parameters']
+
+								door['parameters'] = {}
+								door['parameters']['speckle_type'] = 'Base'
+								door['parameters']['applicationId'] = None
+
+								door['parameters']['MountGap_BM'] = {
+									'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+									'applicationId': None,
+									'applicationInternalName': 'MountGap_BM',
+									'applicationUnit': None,
+									'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+									'isReadOnly': False,
+									'isShared': False,
+									'isTypeParameter': False,
+									'name': 'MountGap_BM',
+									'units': 'm',
+									'value': 0
+								}
+
+								door['parameters']['MountGap_LTRT'] = {
+									'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+									'applicationId': None,
+									'applicationInternalName': 'MountGap_LTRT',
+									'applicationUnit': None,
+									'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+									'isReadOnly': False,
+									'isShared': False,
+									'isTypeParameter': False,
+									'name': 'MountGap_LTRT',
+									'units': 'm',
+									'value': 0
+								}
+
+								door['parameters']['MountGap_TP'] = {
+									'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+									'applicationId': None,
+									'applicationInternalName': 'MountGap_TP',
+									'applicationUnit': None,
+									'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+									'isReadOnly': False,
+									'isShared': False,
+									'isTypeParameter': False,
+									'name': 'MountGap_TP',
+									'units': 'm',
+									'value': 0
+								}
+
+								door['parameters']['TMP_A_Offset'] = {
+									'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+									'applicationId': None,
+									'applicationInternalName': 'TMP_A_Offset',
+									'applicationUnit': None,
+									'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+									'isReadOnly': False,
+									'isShared': False,
+									'isTypeParameter': False,
+									'name': 'TMP_A_Offset',
+									'units': 'm',
+									'value': door['revealDepthFromSide']
+								}
+
+								# door['parameters']['FAMILY_ROUGH_HEIGHT_PARAM'] = None
+								# door['parameters']['FAMILY_ROUGH_HEIGHT_PARAM'] = {
+								# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+								# 	'applicationId': None,
+								# 	'applicationInternalName': 'FAMILY_ROUGH_HEIGHT_PARAM',
+								# 	'applicationUnit': None,
+								# 	'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+								# 	'isReadOnly': False,
+								# 	'isShared': False,
+								# 	'isTypeParameter': False,
+								# 	'name': 'Rough Height',
+								# 	'units': 'm',
+								# 	'value': 2.5
+								# }
+
+								# door['parameters']['INSTANCE_SILL_HEIGHT_PARAM'] = None
+								# door['parameters']['INSTANCE_SILL_HEIGHT_PARAM'] = {
+								# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+								# 	'applicationId': None,
+								# 	'applicationInternalName': 'INSTANCE_SILL_HEIGHT_PARAM',
+								# 	'applicationUnit': None,
+								# 	'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+								# 	'isReadOnly': False,
+								# 	'isShared': False,
+								# 	'isTypeParameter': False,
+								# 	'name': 'Sill Height',
+								# 	'units': 'm',
+								# 	'value': -0.5
+								# }
+
+								# door['parameters']['GENERIC_HEIGHT'] = None
+								# door['parameters']['GENERIC_HEIGHT'] = {
+								# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+								# 	'applicationId': None,
+								# 	'applicationInternalName': 'GENERIC_HEIGHT',
+								# 	'applicationUnit': None,
+								# 	'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+								# 	'isReadOnly': False,
+								# 	'isShared': False,
+								# 	'isTypeParameter': False,
+								# 	'name': 'Height',
+								# 	'units': None,
+								# 	'value': door['height']
+								# }
+
+								# door['parameters']['INSTANCE_HEAD_HEIGHT_PARAM'] = None
+								# door['parameters']['INSTANCE_HEAD_HEIGHT_PARAM'] = {
+								# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+								# 	'applicationId': None,
+								# 	'applicationInternalName': 'INSTANCE_HEAD_HEIGHT_PARAM',
+								# 	'applicationUnit': None,
+								# 	'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+								# 	'isReadOnly': False,
+								# 	'isShared': False,
+								# 	'isTypeParameter': False,
+								# 	'name': 'Head Height',
+								# 	'units': None,
+								# 	'value': door['lower'] + door['height']
+								# }
+
+								# door['definition']['parameters'] = door2['definition']['parameters']
+
+								# for dp in door['parameters']:
+								# 	p = door['parameters'][dp]
+								# 	if p:
+								# 		for pv in p:
+								# 			if pv == 'value':
+								# 				if p[pv]:
+								# 					print(dp + ': ' + str(p[pv]))
+										# print(door['parameters'][dp])
+
+
+								wall['elements'][j] = None
+								wall['elements'][j] = door
+
 
 				# repack back
 				obj['@Wall'][i] = bos.recompose_base(wall)
@@ -489,7 +689,7 @@ for s in selection:
 		for i in range(0, len(obj['@Slab'])):
 			if guId.lower() == obj['@Slab'][i]['applicationId'].lower():
 
-				print(guId)
+				# print(guId)
 
 				bos = BaseObjectSerializer()
 				slab = bos.traverse_base(obj['@Slab'][i])[1]
@@ -552,77 +752,11 @@ for s in selection:
 				obj['@Slab'][i] = bos.recompose_base(slab)
 
 
-	# if catName == 'Roof':
-	# 	for i in range(0, len(obj['@Roof'])):
-	# 		if guId.lower() == obj['@Roof'][i]['applicationId'].lower():
-
-	# 			print(guId)
-
-	# 			bos = BaseObjectSerializer()
-	# 			roof = bos.traverse_base(obj['@Roof'][i])[1]
-
-	# 			# update schema
-	# 			roof['category'] = 'Roofs'
-	# 			roof['family'] = 'Basic Roof'
-	# 			roof['builtInCategory'] = 'OST_Roofs'
-
-	# 			if roof['structure'] == 'Basic':
-	# 				roof['type'] =  str(roof['thickness']) + ' ' + roof['buildingMaterialName']
-	# 			elif roof['structure'] == 'Composite':
-	# 				roof['type'] = roof['compositeName']
-
-	# 			roof['speckle_type'] = None
-	# 			roof['speckle_type'] = 'Objects.BuiltElements.Roof:Objects.BuiltElements.Revit.RevitRoof.RevitRoof:Objects.BuiltElements.Revit.RevitRoof.RevitFootprintRoof'
-
-	# 			# levels
-	# 			roof['level']['category'] = 'Levels'
-	# 			roof['level']['builtInCategory'] = 'OST_Levels'
-	# 			roof['level']['createView'] = True
-	# 			roof['level']['referenceOnly'] = False
-	# 			roof['level']['speckle_type'] = None
-	# 			roof['level']['speckle_type'] = 'Objects.BuiltElements.Level:Objects.BuiltElements.Revit.RevitLevel'
-
-	# 			if not hasLevel(obj['@Levels'], roof['level']['index']):
-	# 				level = newLevel(roof['level']['index'], roof['level']['name'], roof['level']['elevation'])
-	# 				obj['@Levels'].append(level)
-
-	# 			# top elevation to home story
-	# 			# elevationHome = arc.com.GetPropertyValuesOfElements([s], pidElevationToHome)
-	# 			# elevation = elevationHome[0].propertyValues[0].propertyValue.value
-	# 			# roof['TopElevationToHomeStory'] = elevation
-
-	# 			roof['parameters'] = {}
-	# 			roof['parameters']['speckle_type'] = 'Base'
-	# 			roof['parameters']['applicationId'] = None
-
-	# 			# roof['parameters']['FLOOR_HEIGHTABOVELEVEL_PARAM'] = {
-	# 			# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
-	# 			# 	'applicationId': None,
-	# 			# 	'applicationInternalName': 'FLOOR_HEIGHTABOVELEVEL_PARAM',
-	# 			# 	'applicationUnit': 'autodesk.unit.unit:meters-1.0.1',
-	# 			# 	'applicationUnitType': None,
-	# 			# 	'isReadOnly': False,
-	# 			# 	'isShared': False,
-	# 			# 	'isTypeParameter': False,
-	# 			# 	'name': 'Height Offset From Level',
-	# 			# 	'units': 'm',
-	# 			# 	'value': elevation
-	# 			# }
-
-	# 			# fix position via segments
-	# 			# for segment in roof['outline']['segments']:
-	# 			# 	segment['start']['z'] = roof['level']['elevation'] + elevation
-	# 			# 	segment['end']['z'] = roof['level']['elevation'] + elevation
-
-	# 			# repack back
-	# 			obj['@Roof'][i] = bos.recompose_base(roof)
-
-
 	if catName == 'Zone':
 		for i in range(0, len(obj['@Zone'])):
 			if guId.lower() == obj['@Zone'][i]['applicationId'].lower():
 
-				print(guId)
+				# print(guId)
 
 				bos = BaseObjectSerializer()
 				zone = bos.traverse_base(obj['@Zone'][i])[1]
@@ -655,4 +789,6 @@ for s in selection:
 obj['@Levels'].sort(key=lambda l: l.index)
 
 # comitting
-spk.update(obj, 'zone test 1c5')
+spk.update(obj, 'door 1d')
+
+print("\n%s sec" % (time.time() - start_time))
