@@ -90,11 +90,56 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "window",
+		    branch_name = "opening",
 		    message=message
 		)
 
 		print('commit "' + message + '" sent')
+
+
+def newSegment(start_x, start_y, start_z, end_x, end_y, end_z):
+
+	bos = BaseObjectSerializer()
+	segment = bos.traverse_base(Base())[1]
+	segment['start'] = {
+		'x': start_x,
+		'y': start_y,
+		'z': start_z,
+		'units': 'm',
+		'speckle_type': 'Objects.Geometry.Point'
+	}
+	segment['end'] = {
+		'x': end_x,
+		'y': end_y,
+		'z': end_z,
+		'units': 'm',
+		'speckle_type': 'Objects.Geometry.Point'
+	}
+	segment['units'] = 'm'
+	segment['speckle_type'] = 'Objects.Geometry.Line'
+
+	return bos.recompose_base(segment)
+
+def newShaft(height):
+
+	bos = BaseObjectSerializer()
+	shaft = bos.traverse_base(Base())[1]
+
+	shaft['type'] = 'Opening Cut'
+	shaft['bottomLevel'] = {}
+	shaft['units'] = 'm'
+	shaft['height'] = height
+	shaft['category'] = 'Shaft Openings'
+	shaft['speckle_type'] = 'Objects.BuiltElements.Opening:Objects.BuiltElements.Revit.RevitOpening:Objects.BuiltElements.Revit.RevitShaft'
+	shaft['builtInCategory'] = 'OST_ShaftOpening'
+	shaft['outline'] = {
+		'units': 'm',
+		'closed': True,
+		'speckle_type': 'Objects.Geometry.Polycurve',
+		'segments': []
+	}
+
+	return bos.recompose_base(shaft)
 
 
 def newLevel(index, name, elevation):
@@ -142,6 +187,9 @@ selection = arc.com.GetSelectedElements()
 
 pidElevationToHome = [arc.utl.GetBuiltInPropertyId('General_TopElevationToHomeStory')]
 pidTopLinkStory = [arc.utl.GetBuiltInPropertyId('General_TopLinkStory')]
+pidHeight = [arc.utl.GetBuiltInPropertyId('Geometry_OpeningTotalThickness')]
+
+pidBottomELevation = [arc.utl.GetBuiltInPropertyId('General_BottomElevationToHomeStory')]
 
 obj['@Levels'] = []
 obj['@elements'] = []
@@ -156,6 +204,21 @@ lines['collectionType'] = 'Revit Category'
 lines['elements'] = []
 
 obj['@elements'].append(bos.recompose_base(lines))
+
+# openings
+bos = BaseObjectSerializer()
+shafts = bos.traverse_base(Base())[1]
+shafts['name'] = 'Shaft Opening'
+shafts['speckle_type'] = 'Speckle.Core.Models.Collection'
+shafts['applicationId'] = 'Shaft Opening'
+shafts['collectionType'] = 'Revit Category'
+shafts['elements'] = []
+
+obj['@elements'].append(bos.recompose_base(shafts))
+
+
+# openings  = arc.com.GetElementsByType('Opening')
+# print(openings)
 
 cc = 0
 for s in selection:
@@ -769,10 +832,63 @@ for s in selection:
 					obj['@elements'][0]['elements'].append(bbs.recompose_base(boundry))
 
 
+	if catName == 'Opening':
+		for i in range(0, len(obj['@Opening'])):
+			if guId.lower() == obj['@Opening'][i]['applicationId'].lower():
+
+				bbox = arc.com.Get2DBoundingBoxes([s,])[0].boundingBox2D
+				print(bbox)
+
+				genHeight = arc.com.GetPropertyValuesOfElements([s], pidHeight)
+				height = genHeight[0].propertyValues[0].propertyValue.value
+				print(height)
+				bottomElv = arc.com.GetPropertyValuesOfElements([s], pidBottomELevation)
+				btmElv = bottomElv[0].propertyValues[0].propertyValue.value
+				print(btmElv)
+
+				btmElv = btmElv - 0.5
+
+				shaft = newShaft(height)
+				shaft['bottomLevel'] = obj['@Opening'][i]['level']
+				# print(shaft)
+
+				shaft['outline']['segments'].append(newSegment(bbox.xMin, bbox.yMin, btmElv,	bbox.xMin, bbox.yMax, btmElv))
+				shaft['outline']['segments'].append(newSegment(bbox.xMin, bbox.yMax, btmElv,	bbox.xMax, bbox.yMax, btmElv))
+				shaft['outline']['segments'].append(newSegment(bbox.xMax, bbox.yMax, btmElv,	bbox.xMax, bbox.yMin, btmElv))
+				shaft['outline']['segments'].append(newSegment(bbox.xMax, bbox.yMin, btmElv,	bbox.xMin, bbox.yMin, btmElv))
+
+				shaft['parameters'] = {}
+				shaft['parameters']['speckle_type'] = 'Base'
+				shaft['parameters']['applicationId'] = None
+
+				shaft['parameters']['WALL_BASE_OFFSET'] = {
+					'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+					'applicationId': None,
+					'applicationInternalName': 'WALL_BASE_OFFSET',
+					'applicationUnit': None,
+					'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+					'isReadOnly': False,
+					'isShared': False,
+					'isTypeParameter': False,
+					'name': 'Base Offset',
+					'units': 'm',
+					'value': btmElv
+				}
+
+				bos = BaseObjectSerializer()
+				shaft = bos.traverse_base(shaft)[1]
+				shaft = (bos.recompose_base(shaft))
+
+				obj['@elements'][1]['elements'].append(shaft)
+
+				#
+
+
+
 # reorder levels
 obj['@Levels'].sort(key=lambda l: l.index)
 
 # comitting
-spk.update(obj, 'window 1a1')
+spk.update(obj, 'opening 1e2')
 
 print("\n%s sec" % (time.time() - start_time))
