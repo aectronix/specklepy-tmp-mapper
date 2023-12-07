@@ -166,7 +166,7 @@ for s in selection:
 
 	cc += 1
 
-	print('processing ' + str(cc) + '/' + str(len(selection)) + '...', end='\r')
+	print('processing ' + str(cc) + '/' + str(len(selection)) + '...') #, end='\r')
 
 	if catName == 'Beam':
 		for i in range(0, len(obj['@Beam'])):
@@ -426,11 +426,15 @@ for s in selection:
 
 				# vector weight
 				vw = math.sqrt((vx*1000) ** 2 + (vy*1000) ** 2)/1000
+				vw2 = math.sqrt((dx*1000) ** 2 + (dy*1000) ** 2)/1000
 				#print('vector: (' + str(vx) + ',' + str(vy) + '), weight: ' + str(vw))
 
 				# vector unit
 				ux = vx/vw
 				uy = vy/vw
+
+				ux2 = dx/vw2
+				uy2 = dy/vw2
 				#print('unitv: (' + str(ux) + ',' + str(uy) + ')')
 
 				# Regular basic walls
@@ -482,6 +486,10 @@ for s in selection:
 				wall['baseLine']['start']['y'] = start['y']
 				wall['baseLine']['end']['y'] = end['y']
 
+				print(guId)
+				print(ux2)
+				print(uy2)
+
 				# openings
 				if wall['elements']:
 
@@ -494,7 +502,7 @@ for s in selection:
 						for j in range(0, len(wall['elements'])):
 							if guId.lower() == wall['elements'][j]['applicationId'].lower():
 
-								print('found doors...')
+								# print('found doors...')
 
 								bos2 = BaseObjectSerializer()
 								# door2 = bos2.traverse_base(obj2['elements'][0]['elements'][1]['elements'][0])[1]
@@ -505,7 +513,7 @@ for s in selection:
 								# definition, parameters
 
 								door['category'] = 'Doors'
-								door['type'] = door['libraryPart'] + str(door['width']) + 'x' + str(door['height'])
+								door['type'] = door['libraryPart'] + ' ' + str(door['width']*1000) + 'x' + str(door['height']*1000)
 								door['builtInCategory'] = 'OST_Doors'
 								door['speckle_type'] = 'Objects.Other.Revit.RevitInstance'
 
@@ -515,7 +523,7 @@ for s in selection:
 
 								door['definition'] = {
 									'units': 'm',
-									'type': door['libraryPart'] + str(door['width']) + 'x' + str(door['height']),
+									'type': door['type'],
 									'category': 'Doors',
 									'speckle_type': 'Objects.BuiltElements.Revit.RevitElementType:Objects.BuiltElements.Revit.RevitSymbolElementType',
 									'placementType': 'OneLevelBasedHosted',
@@ -529,15 +537,27 @@ for s in selection:
 								
 
 								if door['refSide'] == True:
+									dv = -1
 									door['handFlipped'] = True
+								else:
+									dv = 1
+
+								if door['reflected'] == True:
+									rv = -1
+								else: rv = 1
+
+								if door['oSide'] == True:
+									ov = -1
+								else: ov = 1
+
 
 								door['transform'] = {
 									'units': 'm',
 									'speckle_type': 'Objects.Other.Transform',
 									'matrix': [
-										1, 0, 0, 	0 + wall['baseLine']['start']['x'] - door['objLoc'],
-										0, 1, 0, 	0, # + door['revealDepthFromSide'],
-										0, 0, 1,	0 + door['lower'],
+										ux2, 0, 0, 	0 + wall['baseLine']['start']['x'] + door['objLoc'],
+										0, uy2, 0, 	0 + wall['baseLine']['start']['y'] - door['objLoc'],
+										0, 0, 1,	0 + wall['baseLine']['start']['z'] + door['lower'],
 
 										0, 0, 0,	1
 									]
@@ -677,6 +697,8 @@ for s in selection:
 										# print(door['parameters'][dp])
 
 
+
+
 								wall['elements'][j] = None
 								wall['elements'][j] = door
 
@@ -789,6 +811,6 @@ for s in selection:
 obj['@Levels'].sort(key=lambda l: l.index)
 
 # comitting
-spk.update(obj, 'door 1d')
+spk.update(obj, 'door 1')
 
 print("\n%s sec" % (time.time() - start_time))
