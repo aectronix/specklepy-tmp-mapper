@@ -90,7 +90,7 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "door",
+		    branch_name = "window",
 		    message=message
 		)
 
@@ -486,34 +486,22 @@ for s in selection:
 				wall['baseLine']['start']['y'] = start['y']
 				wall['baseLine']['end']['y'] = end['y']
 
-				print(guId)
-				print(ux2)
-				print(uy2)
-
 				# openings
-				if wall['elements']:
+				if wall['elements'] and wall['hasDoor'] == True:
 
 					doors  = arc.com.GetElementsByType('Door')
 
-					# todo: for all types!!!
 					for d in doors:
 
 						guId = str(d.elementId.guid)
 						for j in range(0, len(wall['elements'])):
 							if guId.lower() == wall['elements'][j]['applicationId'].lower():
 
-								# print('found doors...')
-
-								bos2 = BaseObjectSerializer()
-								# door2 = bos2.traverse_base(obj2['elements'][0]['elements'][1]['elements'][0])[1]
-								# door = door2
-
 								door = wall['elements'][j]
 
 								# definition, parameters
-
 								door['category'] = 'Doors'
-								door['type'] = door['libraryPart'] + ' ' + str(door['width']*1000) + 'x' + str(door['height']*1000)
+								door['type'] = door['libraryPart'] + ' - ' + str(door['width']*1000) + 'x' + str(door['height']*1000)
 								door['builtInCategory'] = 'OST_Doors'
 								door['speckle_type'] = 'Objects.Other.Revit.RevitInstance'
 
@@ -528,28 +516,7 @@ for s in selection:
 									'speckle_type': 'Objects.BuiltElements.Revit.RevitElementType:Objects.BuiltElements.Revit.RevitSymbolElementType',
 									'placementType': 'OneLevelBasedHosted',
 									'builtInCategory': 'OST_Doors',
-									# 'parameters': door2['definition']['parameters'],
-									# 'displayValue': door2['definition']['displayValue']
-
 								}
-
-								# door['mirrored'] = True
-								
-
-								if door['refSide'] == True:
-									dv = -1
-									door['handFlipped'] = True
-								else:
-									dv = 1
-
-								if door['reflected'] == True:
-									rv = -1
-								else: rv = 1
-
-								if door['oSide'] == True:
-									ov = -1
-								else: ov = 1
-
 
 								door['transform'] = {
 									'units': 'm',
@@ -625,82 +592,77 @@ for s in selection:
 									'value': door['revealDepthFromSide']
 								}
 
-								# door['parameters']['FAMILY_ROUGH_HEIGHT_PARAM'] = None
-								# door['parameters']['FAMILY_ROUGH_HEIGHT_PARAM'] = {
-								# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
-								# 	'applicationId': None,
-								# 	'applicationInternalName': 'FAMILY_ROUGH_HEIGHT_PARAM',
-								# 	'applicationUnit': None,
-								# 	'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
-								# 	'isReadOnly': False,
-								# 	'isShared': False,
-								# 	'isTypeParameter': False,
-								# 	'name': 'Rough Height',
-								# 	'units': 'm',
-								# 	'value': 2.5
-								# }
-
-								# door['parameters']['INSTANCE_SILL_HEIGHT_PARAM'] = None
-								# door['parameters']['INSTANCE_SILL_HEIGHT_PARAM'] = {
-								# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
-								# 	'applicationId': None,
-								# 	'applicationInternalName': 'INSTANCE_SILL_HEIGHT_PARAM',
-								# 	'applicationUnit': None,
-								# 	'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
-								# 	'isReadOnly': False,
-								# 	'isShared': False,
-								# 	'isTypeParameter': False,
-								# 	'name': 'Sill Height',
-								# 	'units': 'm',
-								# 	'value': -0.5
-								# }
-
-								# door['parameters']['GENERIC_HEIGHT'] = None
-								# door['parameters']['GENERIC_HEIGHT'] = {
-								# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
-								# 	'applicationId': None,
-								# 	'applicationInternalName': 'GENERIC_HEIGHT',
-								# 	'applicationUnit': None,
-								# 	'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
-								# 	'isReadOnly': False,
-								# 	'isShared': False,
-								# 	'isTypeParameter': False,
-								# 	'name': 'Height',
-								# 	'units': None,
-								# 	'value': door['height']
-								# }
-
-								# door['parameters']['INSTANCE_HEAD_HEIGHT_PARAM'] = None
-								# door['parameters']['INSTANCE_HEAD_HEIGHT_PARAM'] = {
-								# 	'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
-								# 	'applicationId': None,
-								# 	'applicationInternalName': 'INSTANCE_HEAD_HEIGHT_PARAM',
-								# 	'applicationUnit': None,
-								# 	'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
-								# 	'isReadOnly': False,
-								# 	'isShared': False,
-								# 	'isTypeParameter': False,
-								# 	'name': 'Head Height',
-								# 	'units': None,
-								# 	'value': door['lower'] + door['height']
-								# }
-
-								# door['definition']['parameters'] = door2['definition']['parameters']
-
-								# for dp in door['parameters']:
-								# 	p = door['parameters'][dp]
-								# 	if p:
-								# 		for pv in p:
-								# 			if pv == 'value':
-								# 				if p[pv]:
-								# 					print(dp + ': ' + str(p[pv]))
-										# print(door['parameters'][dp])
-
-
 
 
 								wall['elements'][j] = None
 								wall['elements'][j] = door
+
+
+				if wall['elements'] and wall['hasWindow'] == True:
+
+					windows  = arc.com.GetElementsByType('Window')
+
+					for w in windows:
+
+						guId = str(w.elementId.guid)
+						for k in range(0, len(wall['elements'])):
+							if guId.lower() == wall['elements'][k]['applicationId'].lower():
+
+								window = wall['elements'][k]
+
+								# definition, parameters
+								window['category'] = 'Windows'
+								window['type'] = window['libraryPart'] + ' - ' + str(window['width']*1000) + 'x' + str(window['height']*1000)
+								window['builtInCategory'] = 'OST_Windows'
+								window['speckle_type'] = 'Objects.Other.Revit.RevitInstance'
+
+								window['level'] = wall['level']
+
+								window['units'] = 'm'
+
+								window['definition'] = {
+									'units': 'm',
+									'type': window['type'],
+									'category': 'Windows',
+									'speckle_type': 'Objects.BuiltElements.Revit.RevitElementType:Objects.BuiltElements.Revit.RevitSymbolElementType',
+									'placementType': 'OneLevelBasedHosted',
+									'builtInCategory': 'OST_Windows',
+								}
+
+								ov = -1 if window['oSide'] == True else 1
+
+								window['transform'] = {
+									'units': 'm',
+									'speckle_type': 'Objects.Other.Transform',
+									'matrix': [
+										ux2, 0, 0, 	0 + wall['baseLine']['start']['x'] + window['objLoc'] * ux2,
+										0, uy2, 0, 	0 + wall['baseLine']['start']['y'] + window['objLoc'] * uy2,
+										0, 0, 1,	0 + wall['baseLine']['start']['z'] + window['lower'],
+
+										0, 0, 0,	1
+									]
+								}
+
+								window['parameters'] = {}
+								window['parameters']['speckle_type'] = 'Base'
+								window['parameters']['applicationId'] = None
+
+								window['parameters']['Глубина_вставки_окна'] = {
+									'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+									'applicationId': None,
+									'applicationInternalName': 'Глубина_вставки_окна',
+									'applicationUnit': None,
+									'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+									'isReadOnly': False,
+									'isShared': False,
+									'isTypeParameter': False,
+									'name': 'Глубина_вставки_окна',
+									'units': 'm',
+									'value': window['revealDepthFromSide']
+								}
+
+								wall['elements'][k] = None
+								wall['elements'][k] = window
 
 
 				# repack back
@@ -811,6 +773,6 @@ for s in selection:
 obj['@Levels'].sort(key=lambda l: l.index)
 
 # comitting
-spk.update(obj, 'door 1')
+spk.update(obj, 'window 1a1')
 
 print("\n%s sec" % (time.time() - start_time))
