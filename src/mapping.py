@@ -59,6 +59,7 @@ class Cloud():
 
 	def connect(self):
 
+		# client = SpeckleClient(host='https://app.speckle.systems/')
 		client = SpeckleClient(host='https://speckle.xyz')
 		account = get_default_account()
 		client.authenticate_with_account(account)
@@ -90,7 +91,7 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "opening",
+		    branch_name = "test",
 		    message=message
 		)
 
@@ -120,15 +121,15 @@ def newSegment(start_x, start_y, start_z, end_x, end_y, end_z):
 
 	return bos.recompose_base(segment)
 
-def newShaft(height):
+def newShaft(appId):
 
 	bos = BaseObjectSerializer()
 	shaft = bos.traverse_base(Base())[1]
 
+	shaft['applicationId'] = appId
 	shaft['type'] = 'Opening Cut'
 	shaft['bottomLevel'] = {}
 	shaft['units'] = 'm'
-	shaft['height'] = height
 	shaft['category'] = 'Shaft Openings'
 	shaft['speckle_type'] = 'Objects.BuiltElements.Opening:Objects.BuiltElements.Revit.RevitOpening:Objects.BuiltElements.Revit.RevitShaft'
 	shaft['builtInCategory'] = 'OST_ShaftOpening'
@@ -140,6 +141,39 @@ def newShaft(height):
 	}
 
 	return bos.recompose_base(shaft)
+
+
+def newWallShaft(appId):
+
+	bos = BaseObjectSerializer()
+	shaft = bos.traverse_base(Base())[1]
+
+	shaft['applicationId'] = appId
+	shaft['type'] = 'Rectangular Straight Wall Opening'
+	shaft['units'] = 'm'
+	shaft['category'] = 'Rectangular Straight Wall Opening'
+	shaft['speckle_type'] = 'Objects.BuiltElements.Opening:Objects.BuiltElements.Revit.RevitOpening:Objects.BuiltElements.Revit.RevitWallOpening'
+	shaft['builtInCategory'] = 'OST_SWallRectOpening'
+	shaft['outline'] = {
+		'units': 'm',
+		'closed': True,
+		'speckle_type': 'Objects.Geometry.Polyline',
+		'value': [],
+		'applicationId': appId
+	}
+
+	return bos.recompose_base(shaft)
+
+def newChunk(appId):
+
+	bos = BaseObjectSerializer()
+	chunk = bos.traverse_base(Base())[1]
+
+	chunk['applicationId'] = appId
+	chunk['speckle_type'] = 'Speckle.Core.Models.DataChunk'
+	chunk['data'] = []
+
+	return bos.recompose_base(chunk)
 
 
 def newLevel(index, name, elevation):
@@ -185,11 +219,15 @@ spk = Cloud()
 obj = spk.retrieve(arg.stream, arg.commit)
 selection = arc.com.GetSelectedElements()
 
+pidElementID = [arc.utl.GetBuiltInPropertyId('General_ElementID')]
+pidParentID = [arc.utl.GetBuiltInPropertyId('IdAndCategories_ParentId')]
 pidElevationToHome = [arc.utl.GetBuiltInPropertyId('General_TopElevationToHomeStory')]
 pidTopLinkStory = [arc.utl.GetBuiltInPropertyId('General_TopLinkStory')]
-pidHeight = [arc.utl.GetBuiltInPropertyId('Geometry_OpeningTotalThickness')]
-
+pidHeight = [arc.utl.GetBuiltInPropertyId('General_Height')]
+pidThickness = [arc.utl.GetBuiltInPropertyId('Geometry_OpeningTotalThickness')]
 pidBottomELevation = [arc.utl.GetBuiltInPropertyId('General_BottomElevationToHomeStory')]
+
+pidTemp = [arc.utl.GetBuiltInPropertyId('IdAndCategories_ParentId')]
 
 obj['@Levels'] = []
 obj['@elements'] = []
@@ -219,6 +257,10 @@ obj['@elements'].append(bos.recompose_base(shafts))
 
 # openings  = arc.com.GetElementsByType('Opening')
 # print(openings)
+
+doors  = arc.com.GetElementsByType('Door')
+windows  = arc.com.GetElementsByType('Window')
+openings  = arc.com.GetElementsByType('Opening')
 
 cc = 0
 for s in selection:
@@ -552,7 +594,7 @@ for s in selection:
 				# openings
 				if wall['elements'] and wall['hasDoor'] == True:
 
-					doors  = arc.com.GetElementsByType('Door')
+					
 
 					for d in doors:
 
@@ -663,7 +705,7 @@ for s in selection:
 
 				if wall['elements'] and wall['hasWindow'] == True:
 
-					windows  = arc.com.GetElementsByType('Window')
+					
 
 					for w in windows:
 
@@ -726,6 +768,79 @@ for s in selection:
 
 								wall['elements'][k] = None
 								wall['elements'][k] = window
+
+
+				# eid = None
+				# elementID = arc.com.GetPropertyValuesOfElements([s], pidElementID)
+				# eid = elementID[0].propertyValues[0].propertyValue.value
+
+				
+
+				# for o in openings:
+
+				# 	parentID = arc.com.GetPropertyValuesOfElements([o], pidParentID)
+				# 	pid = parentID[0].propertyValues[0].propertyValue.value
+
+				# 	if pid == eid:
+
+				# 		for n in range(0, len(obj['@Opening'])):
+				# 			guId = str(o.elementId.guid)
+				# 			if guId.lower() == obj['@Opening'][n]['applicationId'].lower():
+
+				# 				# print(eid)
+
+				# 				bbox = arc.com.Get2DBoundingBoxes([o,])[0].boundingBox2D
+				# 				bottomElv = arc.com.GetPropertyValuesOfElements([o], pidBottomELevation)
+				# 				btmElv = bottomElv[0].propertyValues[0].propertyValue.value
+
+				# 				heightOp = arc.com.GetPropertyValuesOfElements([o], pidHeight)
+				# 				height = heightOp[0].propertyValues[0].propertyValue.value
+
+				# 				ThicknessOp = arc.com.GetPropertyValuesOfElements([o], pidThickness)
+				# 				thickness = ThicknessOp[0].propertyValues[0].propertyValue.value
+
+
+				# 				wss = BaseObjectSerializer()
+				# 				wShaft = wss.traverse_base(newWallShaft(guId))[1]
+
+				# 				cos = BaseObjectSerializer()
+				# 				chunk = cos.traverse_base(newChunk(guId))[1]
+
+				# 				chunk['data'].append(bbox.xMin)
+				# 				chunk['data'].append(bbox.yMin-thickness)
+				# 				chunk['data'].append(btmElv)
+
+				# 				chunk['data'].append(bbox.xMin)
+				# 				chunk['data'].append(bbox.yMin-thickness)
+				# 				chunk['data'].append(btmElv+height)
+
+				# 				chunk['data'].append(bbox.xMax)
+				# 				chunk['data'].append(bbox.yMin-thickness)
+				# 				chunk['data'].append(btmElv+height)
+
+				# 				chunk['data'].append(bbox.xMax)
+				# 				chunk['data'].append(bbox.yMin-thickness)
+				# 				chunk['data'].append(btmElv)
+
+				# 				chunk['data'].append(bbox.xMin)
+				# 				chunk['data'].append(bbox.yMin-thickness)
+				# 				chunk['data'].append(btmElv)
+
+				# 				# print(wShaft)
+
+				# 				wShaft['outline']['value'].append(chunk)
+
+				# 				# print(thickness)
+
+
+				# 				if not wall['elements']:
+				# 					wall['elements'] = []
+
+				# 				wall['elements'].append(wShaft)
+
+				# 				# print(wall['elements'])
+
+				# 				# del wShaft
 
 
 				# repack back
@@ -836,52 +951,48 @@ for s in selection:
 		for i in range(0, len(obj['@Opening'])):
 			if guId.lower() == obj['@Opening'][i]['applicationId'].lower():
 
-				bbox = arc.com.Get2DBoundingBoxes([s,])[0].boundingBox2D
-				print(bbox)
+				if obj['@Opening'][i]['classifications'][0]['code'] != 'Empty Opening - wall' and obj['@Opening'][i]['classifications'][0]['code'] != 'Порожній отвір - стіна':
 
-				genHeight = arc.com.GetPropertyValuesOfElements([s], pidHeight)
-				height = genHeight[0].propertyValues[0].propertyValue.value
-				print(height)
-				bottomElv = arc.com.GetPropertyValuesOfElements([s], pidBottomELevation)
-				btmElv = bottomElv[0].propertyValues[0].propertyValue.value
-				print(btmElv)
+					bbox = arc.com.Get2DBoundingBoxes([s,])[0].boundingBox2D
 
-				btmElv = btmElv - 0.5
+					genHeight = arc.com.GetPropertyValuesOfElements([s], pidThickness)
+					height = genHeight[0].propertyValues[0].propertyValue.value
+					bottomElv = arc.com.GetPropertyValuesOfElements([s], pidBottomELevation)
+					btmElv = bottomElv[0].propertyValues[0].propertyValue.value
+					btmElv = btmElv - 0.5
 
-				shaft = newShaft(height)
-				shaft['bottomLevel'] = obj['@Opening'][i]['level']
-				# print(shaft)
+					shaft = newShaft(guId)
+					shaft['bottomLevel'] = obj['@Opening'][i]['level']
+					shaft['height'] = height
 
-				shaft['outline']['segments'].append(newSegment(bbox.xMin, bbox.yMin, btmElv,	bbox.xMin, bbox.yMax, btmElv))
-				shaft['outline']['segments'].append(newSegment(bbox.xMin, bbox.yMax, btmElv,	bbox.xMax, bbox.yMax, btmElv))
-				shaft['outline']['segments'].append(newSegment(bbox.xMax, bbox.yMax, btmElv,	bbox.xMax, bbox.yMin, btmElv))
-				shaft['outline']['segments'].append(newSegment(bbox.xMax, bbox.yMin, btmElv,	bbox.xMin, bbox.yMin, btmElv))
+					shaft['outline']['segments'].append(newSegment(bbox.xMin, bbox.yMin, btmElv,	bbox.xMin, bbox.yMax, btmElv))
+					shaft['outline']['segments'].append(newSegment(bbox.xMin, bbox.yMax, btmElv,	bbox.xMax, bbox.yMax, btmElv))
+					shaft['outline']['segments'].append(newSegment(bbox.xMax, bbox.yMax, btmElv,	bbox.xMax, bbox.yMin, btmElv))
+					shaft['outline']['segments'].append(newSegment(bbox.xMax, bbox.yMin, btmElv,	bbox.xMin, bbox.yMin, btmElv))
 
-				shaft['parameters'] = {}
-				shaft['parameters']['speckle_type'] = 'Base'
-				shaft['parameters']['applicationId'] = None
+					shaft['parameters'] = {}
+					shaft['parameters']['speckle_type'] = 'Base'
+					shaft['parameters']['applicationId'] = None
 
-				shaft['parameters']['WALL_BASE_OFFSET'] = {
-					'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
-					'applicationId': None,
-					'applicationInternalName': 'WALL_BASE_OFFSET',
-					'applicationUnit': None,
-					'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
-					'isReadOnly': False,
-					'isShared': False,
-					'isTypeParameter': False,
-					'name': 'Base Offset',
-					'units': 'm',
-					'value': btmElv
-				}
+					shaft['parameters']['WALL_BASE_OFFSET'] = {
+						'speckle_type': 'Objects.BuiltElements.Revit.Parameter',
+						'applicationId': None,
+						'applicationInternalName': 'WALL_BASE_OFFSET',
+						'applicationUnit': None,
+						'applicationUnitType': 'autodesk.unit.unit:meters-1.0.1',
+						'isReadOnly': False,
+						'isShared': False,
+						'isTypeParameter': False,
+						'name': 'Base Offset',
+						'units': 'm',
+						'value': btmElv
+					}
 
-				bos = BaseObjectSerializer()
-				shaft = bos.traverse_base(shaft)[1]
-				shaft = (bos.recompose_base(shaft))
+					bos = BaseObjectSerializer()
+					shaft = bos.traverse_base(shaft)[1]
+					shaft = bos.recompose_base(shaft)
 
-				obj['@elements'][1]['elements'].append(shaft)
-
-				#
+					obj['@elements'][1]['elements'].append(shaft)
 
 
 
@@ -889,6 +1000,6 @@ for s in selection:
 obj['@Levels'].sort(key=lambda l: l.index)
 
 # comitting
-spk.update(obj, 'opening 1e2')
+spk.update(obj, 'test 1')
 
 print("\n%s sec" % (time.time() - start_time))
