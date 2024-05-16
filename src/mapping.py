@@ -23,6 +23,7 @@ cmd = argparse.ArgumentParser()
 cmd.add_argument('-s', '--stream', required=False, help='stream id')
 cmd.add_argument('-c', '--commit', required=False, help='commit id')
 cmd.add_argument('-p', '--port', required=False, help='ac port')
+cmd.add_argument('-m', '--message', required=False, help='commit msg')
 arg = cmd.parse_args()
 
 
@@ -91,7 +92,7 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "test",
+		    branch_name = "column",
 		    message=message
 		)
 
@@ -262,6 +263,14 @@ doors  = arc.com.GetElementsByType('Door')
 windows  = arc.com.GetElementsByType('Window')
 openings  = arc.com.GetElementsByType('Opening')
 
+# spkBeam = obj['elements'][3]['elements']
+spkColumn = obj['elements'][0]['elements']
+# spkOpening = obj['elements'][6]['elements']
+# spkRoof = obj['elements'][1]['elements']
+# spkSlab = obj['elements'][0]['elements']
+# spkStair = obj['elements'][5]['elements']
+# spkWall = obj['elements'][0]['elements']
+
 cc = 0
 for s in selection:
 	# get main info
@@ -271,19 +280,19 @@ for s in selection:
 
 	cc += 1
 
-	print('processing ' + str(cc) + '/' + str(len(selection)) + '...') #, end='\r')
+	print('processing ' + str(cc) + '/' + str(len(selection)) + '...', end='\r')
 
 	if catName == 'Beam':
-		for i in range(0, len(obj['@Beam'])):
-			if guId.lower() == obj['@Beam'][i]['applicationId'].lower():
+		for i in range(0, len(spkBeam)):
+			if guId.lower() == spkBeam[i]['applicationId'].lower():
 
 				# print(guId)
 
 				bos = BaseObjectSerializer()
-				beam = bos.traverse_base(obj['@Beam'][i])[1]
+				beam = bos.traverse_base(spkBeam[i])[1]
 
 				beam['category'] = 'Structural Framing'
-				beam['family'] = 'RLL_Каркас_Горизонтал_Бетон500'
+				beam['family'] = 'RLL_Каркас_Горизонтал'
 				beam['builtInCategory'] = 'OST_StructuralFraming'
 				beam['type'] = 'Custom'
 
@@ -354,17 +363,17 @@ for s in selection:
 				}
 
 				# repack back
-				obj['@Beam'][i] = bos.recompose_base(beam)
+				spkBeam[i] = bos.recompose_base(beam)
 
 
 	if catName == 'Column':
-		for i in range(0, len(obj['@Column'])):
-			if guId.lower() == obj['@Column'][i]['applicationId'].lower():
+		for i in range(0, len(spkColumn)):
+			if guId.lower() == spkColumn[i]['applicationId'].lower():
 
 				# print(guId)
 
 				bos = BaseObjectSerializer()
-				column = bos.traverse_base(obj['@Column'][i])[1]
+				column = bos.traverse_base(spkColumn[i])[1]
 
 				# # update schema
 				column['category'] = 'Structural Columns'
@@ -374,13 +383,15 @@ for s in selection:
 				column['speckle_type'] = 'Objects.BuiltElements.Column:Objects.BuiltElements.Revit.RevitColumn'
 
 				column['baseOffset'] = column['bottomOffset']
-				nHeight = column['segments']['Segment #1']['assemblySegmentData']['nominalHeight']
-				nWidth = column['segments']['Segment #1']['assemblySegmentData']['nominalWidth']
+				nHeight = round(column['segments']['Segment #1']['assemblySegmentData']['nominalHeight']*1000)/1000
+				nWidth = round(column['segments']['Segment #1']['assemblySegmentData']['nominalWidth']*1000)/1000
 
 				if column['segments']['Segment #1']['assemblySegmentData']['modelElemStructureType'] == 'Complex Profile':
 					column['type'] = column['segments']['Segment #1']['assemblySegmentData']['profileAttrName'] + ' ' + str(nHeight) + 'x' + str(nWidth)
 				else:
 					column['type'] = column['segments']['Segment #1']['assemblySegmentData']['buildingMaterial'] + ' ' + str(nHeight) + 'x' + str(nWidth)
+
+				column['rotation'] = column['slantDirectionAngle']
 
 				# # levels
 				column['level']['category'] = 'Levels'
@@ -412,16 +423,16 @@ for s in selection:
 							column['topLevel'] = top.traverse_base(topLevel)[1]
 
 				# repack back
-				obj['@Column'][i] = bos.recompose_base(column)
+				spkColumn[i] = bos.recompose_base(column)
 
 	if catName == 'Wall':
-		for i in range(0, len(obj['@Wall'])):
-			if guId.lower() == obj['@Wall'][i]['applicationId'].lower():
+		for i in range(0, len(spkWall)):
+			if guId.lower() == spkWall[i]['applicationId'].lower():
 
 				# print(guId)
 
 				bos = BaseObjectSerializer()
-				wall = bos.traverse_base(obj['@Wall'][i])[1]
+				wall = bos.traverse_base(spkWall[i])[1]
 
 				# levels
 				wall['level']['category'] = 'Levels'
@@ -523,7 +534,6 @@ for s in selection:
 				# vector deltas
 				dx = ex - sx
 				dy = ey - sy
-				#print('delta: (' + str(dx) + ',' + str(dy) + ')')
 
 				# vector
 				vx = -dy
@@ -532,7 +542,6 @@ for s in selection:
 				# vector weight
 				vw = math.sqrt((vx*1000) ** 2 + (vy*1000) ** 2)/1000
 				vw2 = math.sqrt((dx*1000) ** 2 + (dy*1000) ** 2)/1000
-				#print('vector: (' + str(vx) + ',' + str(vy) + '), weight: ' + str(vw))
 
 				# vector unit
 				ux = vx/vw
@@ -540,7 +549,6 @@ for s in selection:
 
 				ux2 = dx/vw2
 				uy2 = dy/vw2
-				#print('unitv: (' + str(ux) + ',' + str(uy) + ')')
 
 				# Regular basic walls
 				if wall['structure'] == 'Basic' and not wall['referenceLineLocation'] == 'Center':
@@ -558,7 +566,6 @@ for s in selection:
 						elif off < 0:
 							off = 1 * (t - off)
 
-					# if not wall['referenceLineLocation'] == 'Center':
 					start['x'] = sx + (ux * mod) - (ux * off)
 					end['x'] = ex + (ux * mod) - (ux * off)
 					start['y'] = sy + (uy * mod) - (uy * off)
@@ -590,6 +597,37 @@ for s in selection:
 				wall['baseLine']['end']['x'] = end['x']
 				wall['baseLine']['start']['y'] = start['y']
 				wall['baseLine']['end']['y'] = end['y']
+
+
+				# kurwizja
+				# radius = wall['baseLine']['length'] / (2*math.sin(wall['arcAngle']/2))
+				# wall['baseLine']['radius'] = radius
+				# wall['baseLine']['angleRadians'] = wall['arcAngle']
+				# wall['baseLine']['startAngle'] = 5.759587
+				# wall['baseLine']['endAngle'] = 3.926991
+
+				# wall['baseLine']['startPoint'] = wall['baseLine']['start']
+
+				# wall['baseLine']['midPoint'] = {}
+				# wall['baseLine']['midPoint']['x'] = 2.328
+				# wall['baseLine']['midPoint']['y'] = 8.511
+				# wall['baseLine']['midPoint']['z'] = 0
+				# wall['baseLine']['midPoint']['units'] = 'm'
+				# wall['baseLine']['midPoint']['speckle_type'] = 'Objects.Geometry.Point'
+
+				# wall['baseLine']['startPoint'] = wall['baseLine']['end']
+
+				# wall['baseLine']['units'] = 'mm'
+				# wall['baseLine']['length'] = 7141.000462224104
+				# wall['baseLine']['radius'] = 7141.000462224104
+				# wall['baseLine']['endAngle'] = 0.8926250577780135
+				# wall['baseLine']['startAngle'] = 0
+				# wall['baseLine']['angleRadians'] = 0.8926250577780135
+				# wall['baseLine']['speckle_type'] = 'Objects.Geometry.Arc'
+
+				# wall['baseLine']['startPoint'] = wall['baseLine']['start']
+				# wall['baseLine']['endPoint'] = wall['baseLine']['end']
+
 
 				# openings
 				if wall['elements'] and wall['hasDoor'] == True:
@@ -844,17 +882,17 @@ for s in selection:
 
 
 				# repack back
-				obj['@Wall'][i] = bos.recompose_base(wall)
+				spkWall[i] = bos.recompose_base(wall)
 
 
 	if catName == 'Slab':
-		for i in range(0, len(obj['@Slab'])):
-			if guId.lower() == obj['@Slab'][i]['applicationId'].lower():
+		for i in range(0, len(spkSlab)):
+			if guId.lower() == spkSlab[i]['applicationId'].lower():
 
 				# print(guId)
 
 				bos = BaseObjectSerializer()
-				slab = bos.traverse_base(obj['@Slab'][i])[1]
+				slab = bos.traverse_base(spkSlab[i])[1]
 
 				# update schema
 				slab['category'] = 'Floors'
@@ -907,11 +945,19 @@ for s in selection:
 
 				# fix position via segments
 				for segment in slab['outline']['segments']:
-					segment['start']['z'] = slab['level']['elevation'] + elevation
-					segment['end']['z'] = slab['level']['elevation'] + elevation
+					if 'start' in segment:
+						segment['start']['z'] = slab['level']['elevation'] + elevation
+					if 'startPoint' in segment:
+						segment['startPoint']['z'] = slab['level']['elevation'] + elevation
+					if 'midPoint' in segment:
+						segment['midPoint']['z'] = slab['level']['elevation'] + elevation
+					if 'end' in segment:
+						segment['end']['z'] = slab['level']['elevation'] + elevation
+					if 'endPoint' in segment:
+						segment['endPoint']['z'] = slab['level']['elevation'] + elevation
 
 				# repack back
-				obj['@Slab'][i] = bos.recompose_base(slab)
+				spkSlab[i] = bos.recompose_base(slab)
 
 
 	if catName == 'Zone':
@@ -948,10 +994,10 @@ for s in selection:
 
 
 	if catName == 'Opening':
-		for i in range(0, len(obj['@Opening'])):
-			if guId.lower() == obj['@Opening'][i]['applicationId'].lower():
+		for i in range(0, len(spkOpening)):
+			if guId.lower() == spkOpening[i]['applicationId'].lower():
 
-				if obj['@Opening'][i]['classifications'][0]['code'] != 'Empty Opening - wall' and obj['@Opening'][i]['classifications'][0]['code'] != 'Порожній отвір - стіна':
+				if spkOpening[i]['classifications'][0]['code'] != 'Empty Opening - wall' and spkOpening[i]['classifications'][0]['code'] != 'Порожній отвір - стіна':
 
 					bbox = arc.com.Get2DBoundingBoxes([s,])[0].boundingBox2D
 
@@ -962,7 +1008,7 @@ for s in selection:
 					btmElv = btmElv - 0.5
 
 					shaft = newShaft(guId)
-					shaft['bottomLevel'] = obj['@Opening'][i]['level']
+					shaft['bottomLevel'] = spkOpening[i]['level']
 					shaft['height'] = height
 
 					shaft['outline']['segments'].append(newSegment(bbox.xMin, bbox.yMin, btmElv,	bbox.xMin, bbox.yMax, btmElv))
@@ -1000,6 +1046,6 @@ for s in selection:
 obj['@Levels'].sort(key=lambda l: l.index)
 
 # comitting
-spk.update(obj, 'test 1')
+spk.update(obj, arg.message)
 
 print("\n%s sec" % (time.time() - start_time))

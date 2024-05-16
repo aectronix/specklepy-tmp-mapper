@@ -22,7 +22,7 @@ start_time = time.time()
 cmd = argparse.ArgumentParser()
 cmd.add_argument('-s', '--stream', required=False, help='stream id')
 cmd.add_argument('-c', '--commit', required=False, help='commit id')
-cmd.add_argument('-c', '--commit', required=False, help='commit id')
+cmd.add_argument('-m', '--message', required=True, help='message')
 cmd.add_argument('-p', '--port', required=False, help='ac port')
 arg = cmd.parse_args()
 
@@ -91,7 +91,7 @@ class Cloud():
 		commit = self.client.commit.create(
 		    arg.stream,
 		    obj_upd,
-		    branch_name = "map",
+		    branch_name = "main",
 		    message=message
 		)
 
@@ -202,47 +202,47 @@ print(str(len(obj['elements'][0]['elements'])) + ' polygon objects found')
 obj['@Slab'] = []
 
 # temporary offset
-off_x = 323700
-off_y = 6659600
+off_x = 0
+off_y = 0
 
 for i in range(0, len(obj['elements'][0]['elements'])):
 	# if i < 1:
 
-	print('processing ' + str(i) + '/' + str(len(obj['elements'][0]['elements'])) + '...', end='\r')
+	print('processing ' + str(i+1) + '/' + str(len(obj['elements'][0]['elements'])) + '...', end='\r')
 
 	bos = BaseObjectSerializer()
 	poly = bos.traverse_base(obj['elements'][0]['elements'][i])[1]
 
 	if poly:
-		if poly['geometry'][0]['displayValue']:
-			vertices = poly['geometry'][0]['displayValue'][0]['vertices']
+		if poly['geometry'][0]['boundary']:
+			vertices = poly['geometry'][0]['boundary']['value']
 		if poly['attributes']:
 			attributes = poly['attributes']
 
 	z_min = 0
 	#z_min = attributes['H_DTM_MIN']
 
-	slab = newSlab(attributes['H_DSM_MAX'] - attributes['H_DTM_MIN'])
+	slab = newSlab(attributes['HN_MAX'] - z_min)
 	slab['level'] = newLevel(0, 'Ground Floor', 0)
 	if poly and poly['geometry'][0]['displayValue']:
 		slab['displayValue'] = poly['geometry'][0]['displayValue']
-		slab['height'] = attributes['H_DSM_MAX'] - attributes['H_DTM_MIN']
+		slab['height'] = attributes['HN_MAX'] - z_min
 
-	pointsBase = []
+	# pointsBase = []
 	points = []
 	unique = set()
 
 	# take only base
 	for v in range(0, len(vertices), 3):
 		if vertices[v+2] == 0:
-			pointsBase.append({'x': vertices[v], 'y': vertices[v+1], 'z': vertices[v+2]})
+			points.append({'x': vertices[v], 'y': vertices[v+1], 'z': vertices[v+2]})
 
-	# filter out duplicated points
-	for point in pointsBase:
-		p = (point['x'], point['y'], point['z'])
-		if p not in unique:
-			unique.add(p)
-			points.append({'x': point['x']-off_x, 'y': point['y']-off_y, 'z': point['z']})
+# 	# filter out duplicated points
+# 	for point in pointsBase:
+# 		p = (point['x'], point['y'], point['z'])
+# 		if p not in unique:
+# 			unique.add(p)
+# 			points.append({'x': point['x']-off_x, 'y': point['y']-off_y, 'z': point['z']})
 
 	# build segments
 	for p in range(0, len(points)-1):
@@ -256,7 +256,7 @@ for i in range(0, len(obj['elements'][0]['elements'])):
 	slab = bos.traverse_base(slab)[1]
 	slab = (bos.recompose_base(slab))
 
-	del pointsBase
+	# del pointsBase
 	del points
 	del unique
 
@@ -267,28 +267,29 @@ for i in range(0, len(obj['elements'][0]['elements'])):
 obj['elements'] = None
 
 
-bos1 = BaseObjectSerializer()
-tmp1 = bos1.traverse_base(Base())[1]
-obj_1 = bos1.recompose_base(tmp1)
-obj_1['@Slab'] = []
+# bos1 = BaseObjectSerializer()
+# tmp1 = bos1.traverse_base(Base())[1]
+# obj_1 = bos1.recompose_base(tmp1)
+# obj_1['@Slab'] = []
 
 
-bos2 = BaseObjectSerializer()
-tmp2 = bos2.traverse_base(Base())[1]
-obj_2 = bos2.recompose_base(tmp2)
-obj_2['@Slab'] = []
+# bos2 = BaseObjectSerializer()
+# tmp2 = bos2.traverse_base(Base())[1]
+# obj_2 = bos2.recompose_base(tmp2)
+# obj_2['@Slab'] = []
 
 
-for j in range(0, len(obj['@Slab'])):
-	if j < 8000:
-		obj_1['@Slab'].append(obj['@Slab'][j])
-	else:
-		obj_2['@Slab'].append(obj['@Slab'][j])
+# for j in range(0, len(obj['@Slab'])):
+# 	if j < 8000:
+# 		obj_1['@Slab'].append(obj['@Slab'][j])
+# 	else:
+# 		obj_2['@Slab'].append(obj['@Slab'][j])
 
 
-# comitting
-spk.update(obj_1, 'oos builds 0 - one')
-spk.update(obj_2, 'oos builds 0 - two')
+# # comitting
+spk.update(obj, arg.message)
+# spk.update(obj_1, 'oos b 1-1')
+# spk.update(obj_2, 'oos b 1-2')
 
 print("\n%s sec" % (time.time() - start_time))
 
